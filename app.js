@@ -4,7 +4,7 @@ const morgan = require("morgan")
 const cors = require("cors")
 const helmet = require("helmet")
 const { rateLimit } = require("express-rate-limit")
-const db = require("./db")
+const { db } = require("./models")
 
 const app = express()
 const PORT = process.env.PORT || 3000
