@@ -3,11 +3,17 @@ const express = require("express")
 const morgan = require("morgan")
 const cors = require("cors")
 const helmet = require("helmet")
+const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit")
+
 const db = require("./db")
+// const { authRouter } = require("./models")
+const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
+const jwt = require("jsonwebtoken")
 
 const app = express()
 const PORT = process.env.PORT || 3000
+const SECRET = process.env.JWT_SECRET || 'my-top-secret-random-string-5343630'
 
 // Deployed apps sit behind a proxy (Render, ...). This tells Express
 // to trust it, so rate-limiting sees the real visitor IP and secure cookies work.
@@ -22,17 +28,31 @@ const limiter = rateLimit({
     message: { error: '🛑 Too many requests, please try again later.' },
 });
 
-
-// ---------- Middleware ----------
-app.use(helmet())
 app.use(cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173", // let our React frontend call this API
     credentials: true // allow cookies (needed once you add login/auth)
 }))
+
+app.use(jwtCheck)
+
+app.get('/authentication', async (req, res, next) => {
+    console.log(req.auth)
+    const response = await fetch(req.auth.payload.aud[1], {
+        headers: {
+            Authorization: `Bearer ${req.auth.token}`
+        }
+    })
+    const data = await response.json()
+    console.log(data)
+    res.json(data)
+})
+
+// ---------- Middleware ----------
+app.use(helmet())
 app.use(morgan('dev'))
 app.use(express.json({ limit: '10kb' }))
 app.use(limiter)
-
+app.use(cookieParser())
 
 app.get('/', (request, response, next) => {
     try {
@@ -41,6 +61,15 @@ app.get('/', (request, response, next) => {
         next(error)
     }
 })
+
+app.get('/api/protected', jwtCheck, (req, res) => {
+  res.json({
+    message: '🔒 Your token is valid — you reached a protected route!',
+    userId: req.auth.payload.sub, // the Auth0 user id from the token
+  });
+});
+
+// app.use('/auth', authRouter);
 
 // ---------- error handler ----------
 // Express knows this is the error handler because it takes FOUR arguments.
