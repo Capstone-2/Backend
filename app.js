@@ -1,9 +1,10 @@
+require("dotenv").config()
 const express = require("express")
 const morgan = require("morgan")
 const cors = require("cors")
 const helmet = require("helmet")
 const { rateLimit } = require("express-rate-limit")
-const { dbConn } = require("./models")
+const db = require("./db")
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -41,6 +42,13 @@ app.get('/', (request, response, next) => {
     }
 })
 
+// ---------- error handler ----------
+// Express knows this is the error handler because it takes FOUR arguments.
+// Every next(err) from a route ends up here, so all errors funnel to one place.
+app.use((error, request, response, next) => {
+  console.error('ERROR:', error.message);
+  response.status(500).json({ error: 'Something went wrong on the server' });
+});
 
 // ---------- start the server ----------
 // Don't start listening until the database is reachable.
@@ -71,7 +79,9 @@ async function startServer() {
         process.on('SIGTERM', shutdown);
         process.on('SIGINT', shutdown);
     } catch (error) {
-        console.error('❌ Unable to start server:', err.message);
+        console.error('❌ Unable to start server:', error.message);
         process.exit(1); // stop the process so the problem is obvious
     }
 }
+
+startServer()
