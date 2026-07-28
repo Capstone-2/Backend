@@ -1,53 +1,53 @@
-require("dotenv").config()
-const express = require("express")
-const morgan = require("morgan")
-const cors = require("cors")
-const helmet = require("helmet")
-const { rateLimit } = require("express-rate-limit")
-const { db } = require("./models")
+require("dotenv").config();
+const express = require("express");
+const morgan = require("morgan");
+const cors = require("cors");
+const helmet = require("helmet");
+const { rateLimit } = require("express-rate-limit");
+const { db, Rooms, Users } = require("./models");
 
-const app = express()
-const PORT = process.env.PORT || 3000
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // Deployed apps sit behind a proxy (Render, ...). This tells Express
 // to trust it, so rate-limiting sees the real visitor IP and secure cookies work.
-app.set('trust proxy', 1)
+app.set("trust proxy", 1);
 
 // Stop any one IP from spamming the server.
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // max requests per IP in that window
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: { error: '🛑 Too many requests, please try again later.' },
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // max requests per IP in that window
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "🛑 Too many requests, please try again later." },
 });
 
-
 // ---------- Middleware ----------
-app.use(helmet())
-app.use(cors({
+app.use(helmet());
+app.use(
+  cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173", // let our React frontend call this API
-    credentials: true // allow cookies (needed once you add login/auth)
-}))
-app.use(morgan('dev'))
-app.use(express.json({ limit: '10kb' }))
-app.use(limiter)
+    credentials: true, // allow cookies (needed once you add login/auth)
+  }),
+);
+app.use(morgan("dev"));
+app.use(express.json({ limit: "10kb" }));
+app.use(limiter);
 
-
-app.get('/', (request, response, next) => {
-    try {
-        response.json({ status: 200, msg: "Hello There looks like its working!" })
-    } catch (error) {
-        next(error)
-    }
-})
+app.get("/", (request, response, next) => {
+  try {
+    response.json({ status: 200, msg: "Hello There looks like its working!" });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ---------- error handler ----------
 // Express knows this is the error handler because it takes FOUR arguments.
 // Every next(err) from a route ends up here, so all errors funnel to one place.
 app.use((error, request, response, next) => {
-  console.error('ERROR:', error.message);
-  response.status(500).json({ error: 'Something went wrong on the server' });
+  console.error("ERROR:", error.message);
+  response.status(500).json({ error: "Something went wrong on the server" });
 });
 
 // ---------- start the server ----------
@@ -56,32 +56,32 @@ app.use((error, request, response, next) => {
 //   sync()         — creates any missing tables from your models.
 // Never use sync({ force: true }) here — it DROPS your tables on every boot.
 async function startServer() {
-    try {
-        await db.authenticate();
-        console.log('🐘 Database connection established.');
+  try {
+    await db.authenticate();
+    console.log("🐘 Database connection established.");
 
-        await db.sync();
-        console.log('🧩 Models synced.');
+    await db.sync();
+    console.log("🧩 Models synced.");
 
-        const server = app.listen(PORT, () => {
-            console.log(`🚀 Server is running on PORT: ${PORT}`);
-        });
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server is running on PORT: ${PORT}`);
+    });
 
-        // Graceful shutdown: hosts send SIGTERM on redeploy. Stop taking new
-        // requests, then close the DB connection so nothing is left hanging.
-        const shutdown = () => {
-            console.log('\n👋 Shutting down...');
-            server.close(async () => {
-                await db.close();
-                process.exit(0);
-            });
-        };
-        process.on('SIGTERM', shutdown);
-        process.on('SIGINT', shutdown);
-    } catch (error) {
-        console.error('❌ Unable to start server:', error.message);
-        process.exit(1); // stop the process so the problem is obvious
-    }
+    // Graceful shutdown: hosts send SIGTERM on redeploy. Stop taking new
+    // requests, then close the DB connection so nothing is left hanging.
+    const shutdown = () => {
+      console.log("\n👋 Shutting down...");
+      server.close(async () => {
+        await db.close();
+        process.exit(0);
+      });
+    };
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
+  } catch (error) {
+    console.error("❌ Unable to start server:", error.message);
+    process.exit(1); // stop the process so the problem is obvious
+  }
 }
 
-startServer()
+startServer();
