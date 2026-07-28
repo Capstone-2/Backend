@@ -1,18 +1,18 @@
 const db = require("../db"); // Database connection
 const Users = require("./Users");
 const Rooms = require("./Rooms");
-const {
-  User,
-} = require("../../../../assignment/backend-review-task-api/models");
-/* Call the files location so that would be our database connection,
+const Sessions = require("./sessions")
+
+// Association 
+
+Users.belongsToMany(Rooms,{through: Sessions})
+Rooms.belongsToMany(Users,{through: Sessions})
 
 
-*/
-
-// Association
 
 module.exports = {
   db,
   Users,
   Rooms,
+  Sessions,
 };
