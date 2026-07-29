@@ -18,6 +18,11 @@ const Users = db.define('User', {
         type: DataTypes.STRING,
     },
 
+    displayName:{
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+
     totalStudyTime:{
         type: DataTypes.INTEGER,
         defaultValue: 0,

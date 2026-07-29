@@ -5,6 +5,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
 const { db, Rooms, Users, Sessions} = require("./models");
+const userRouter = require("./routes/users")
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,8 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10kb" }));
 app.use(limiter);
+app.use("/users", userRouter);
+
 
 app.get("/", (request, response, next) => {
   try {
@@ -57,10 +60,10 @@ app.use((error, request, response, next) => {
 // Never use sync({ force: true }) here — it DROPS your tables on every boot.
 async function startServer() {
   try {
-    await db.authenticate();
+    //await db.authenticate();
     console.log("🐘 Database connection established.");
 
-    await db.sync();
+    //await db.sync();
     console.log("🧩 Models synced.");
 
     const server = app.listen(PORT, () => {
