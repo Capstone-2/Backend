@@ -45,32 +45,36 @@ router.get("/test", (req, res) => {
 // if not, Sequelize creates it. That makes this safe to call on every login.
 //   - auth0Id / email / name: from the token (trusted)
 //   - username: from req.body (the app-specific field the user chose)
-// router.post('/auth0', async (req, res, next) => {
-//   try {
-//     const { auth0Id, email, name } = identityFromToken(req);
-//     const { username } = req.body;
+router.post('/auth0', jwtCheck, async (request, response, next) => {
+  try {
+    const auth0Id = request.auth.payload.sub;
 
-//     const [user, created] = await Users.findOrCreate({
-//       where: { auth0Id },
-//       defaults: { auth0Id, username, email, name },
-//     });
+    // Profile values are not used as authenticated identity.
+    const { name, email } = request.body;
+    if (!name || !email) {
+      return response.status(400).json({
+        error: "Name and email are required.",
+      });
+    }
 
-//     res.status(created ? 201 : 200).json(user); // 201 = Created, 200 = already existed
-//   } catch (err) {
-//     // Sequelize throws these when a validation rule (username length, email
-//     // format) or a unique constraint (username already taken) fails. Turn them
-//     // into a clean 400 instead of letting them fall through as a 500.
-//     if (
-//       err.name === 'SequelizeValidationError' ||
-//       err.name === 'SequelizeUniqueConstraintError'
-//     ) {
-//       return res
-//         .status(400)
-//         .json({ error: err.errors?.[0]?.message || 'Invalid user data' });
-//     }
-//     next(err);
-//   }
-// });
+    const [user, created] = await Users.findOrCreate({
+      where: { auth0Id, },
+      defaults: { auth0Id, name, email, school: null, },
+    });
+
+    response.status(created ? 201 : 200).json(user); // 201 = Created, 200 = already existed
+  } catch (error) {
+    // Sequelize throws these when a validation rule (username length, email
+    // format) or a unique constraint (username already taken) fails. Turn them
+    // into a clean 400 instead of letting them fall through as a 500.
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      return response
+        .status(400)
+        .json({ error: error.errors?.[0]?.message || 'Invalid user data' });
+    }
+    next(error);
+  }
+});
 
 // READ ME — GET /auth/me
 
