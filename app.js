@@ -7,8 +7,7 @@ const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions, Messages} = require("./models");
-const userRouter = require("./routes/users")
-const { authRouter } = require("./routes")
+const { authRouter, userRouter, roomRouter } = require("./routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
 const http = require("http");
@@ -21,7 +20,7 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   },
 });
@@ -60,6 +59,7 @@ app.use(cookieParser())
 // Routers
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
+app.use("/rooms", roomRouter)
 
 app.get("/", (request, response, next) => {
   try {
@@ -104,7 +104,7 @@ app.use((error, request, response, next) => {
   }
 
   response.status(status).json({
-    ERROR: message,
+    error: message,
   });
 });
 
