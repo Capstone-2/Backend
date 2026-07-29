@@ -10,8 +10,25 @@ const { db, Rooms, Users, Sessions} = require("./models");
 const { authRouter } = require("./routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
+const http = require("http");
+const {Server} = require("socket.io");
+const {registerChatHandlers} = require("./sockets/chat");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "https://localhost:5173",
+    credentials: true,
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("socket connected:", socket.id);
+  registerChatHandlers(io, socket);
+} );
 
 // Deployed apps sit behind a proxy (Render, ...). This tells Express
 // to trust it, so rate-limiting sees the real visitor IP and secure cookies work.
@@ -101,7 +118,7 @@ async function startServer() {
     await db.sync();
     console.log("🧩 Models synced.");
 
-    const server = app.listen(PORT, () => {
+      server.listen(PORT, () => {
       console.log(`🚀 Server is running on PORT: ${PORT}`);
     });
 
