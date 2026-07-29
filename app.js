@@ -121,7 +121,7 @@ async function startServer() {
     //await db.sync();
     console.log("🧩 Models synced.");
 
-      server.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server is running on PORT: ${PORT}`);
     });
 
