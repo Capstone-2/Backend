@@ -61,8 +61,32 @@ app.get('/api/protected', jwtCheck, (req, res) => {
 // Express knows this is the error handler because it takes FOUR arguments.
 // Every next(err) from a route ends up here, so all errors funnel to one place.
 app.use((error, request, response, next) => {
-  console.error("ERROR:", error.message);
-  response.status(500).json({ error: "Something went wrong on the server" });
+  if (response.headersSent) {
+    return next(error);
+  }
+
+  const status = error.status || error.statusCode || 500;
+  console.error("ERROR:", {
+    name: error.name, status, code: error.code, message: error.message,
+  });
+
+  // Auth0 errors may include a WWW-Authenticate header.
+  if (error.headers) {
+    response.set(error.headers);
+  }
+
+  let message = error.message;
+  if (status === 401) {
+    message = "Unauthorized";
+  } else if (status === 403) {
+    message = "Forbidden";
+  } else if (status >= 500) {
+    message = "Something went wrong on the server";
+  }
+
+  response.status(status).json({
+    ERROR: message,
+  });
 });
 
 // ---------- start the server ----------

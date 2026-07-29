@@ -1,7 +1,6 @@
 // middleware/auth.js — verifies the Auth0 access token on protected routes.
 // The express-oauth2-jwt-bearer package does the hard part (fetching Auth0's
 // public keys and checking the token's signature). We just configure it.
-
 const { auth } = require('express-oauth2-jwt-bearer');
 
 // Custom claims (like the user's email) must be namespaced with a URL-like
@@ -16,7 +15,6 @@ if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE) {
 }
 
 // jwtCheck is middleware. Put it on any route — or a whole router — to protect it:
-
 //   router.use(jwtCheck)                     // protect every route in a router
 //   app.get('/secret', jwtCheck, handler)    // protect a single route
 
