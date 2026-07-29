@@ -80,21 +80,21 @@ router.post('/auth0', jwtCheck, async (request, response, next) => {
 
 // Look the user up by the auth0Id from their token, so a user can only ever
 // read their OWN record.
-// router.get('/me', async (req, res, next) => {
-//   try {
-//     const { auth0Id } = identityFromToken(req);
-//     const user = await User.findOne({ where: { auth0Id } });
+router.get('/me', async (req, res, next) => {
+  try {
+    const auth0Id = req.auth.payload.sub;
+    const user = await Users.findOne({ where: { auth0Id } });
 
-//     if (!user) {
-//       return res
-//         .status(404)
-//         .json({ error: 'User not found. Sync first with POST /auth/auth0.' });
-//     }
+    if (!user) {
+      return res.status(404).json({ 
+        error: 'Authenticated user not found. Sync first with POST /auth/auth0.' 
+      });
+    }
 
-//     res.json(user);
-//   } catch (err) {
-//     next(err);
-//   }
-// });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;
