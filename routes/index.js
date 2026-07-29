@@ -1,4 +1,4 @@
 const authRouter = require("./auth.routes")
 
 
-module.exports = {}
+module.exports = {authRouter}

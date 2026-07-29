@@ -13,7 +13,7 @@
  */
 
 const express = require('express');
-const { User } = require('../models');
+const { Users } = require('../models');
 const { jwtCheck, CLAIMS_NAMESPACE } = require('../middleware/auth');
 
 const router = express.Router();
@@ -35,58 +35,62 @@ function identityFromToken(req) {
   };
 }
 
+router.get("/test", (req, res) => {
+  res.json({ message: "Auth router works" });
+});
+
 // CREATE-IF-NEW — POST /auth/auth0
 
 // findOrCreate looks for a row with this auth0Id. If it exists we get it back;
 // if not, Sequelize creates it. That makes this safe to call on every login.
 //   - auth0Id / email / name: from the token (trusted)
 //   - username: from req.body (the app-specific field the user chose)
-router.post('/auth0', async (req, res, next) => {
-  try {
-    const { auth0Id, email, name } = identityFromToken(req);
-    const { username } = req.body;
+// router.post('/auth0', async (req, res, next) => {
+//   try {
+//     const { auth0Id, email, name } = identityFromToken(req);
+//     const { username } = req.body;
 
-    const [user, created] = await User.findOrCreate({
-      where: { auth0Id },
-      defaults: { auth0Id, username, email, name },
-    });
+//     const [user, created] = await Users.findOrCreate({
+//       where: { auth0Id },
+//       defaults: { auth0Id, username, email, name },
+//     });
 
-    res.status(created ? 201 : 200).json(user); // 201 = Created, 200 = already existed
-  } catch (err) {
-    // Sequelize throws these when a validation rule (username length, email
-    // format) or a unique constraint (username already taken) fails. Turn them
-    // into a clean 400 instead of letting them fall through as a 500.
-    if (
-      err.name === 'SequelizeValidationError' ||
-      err.name === 'SequelizeUniqueConstraintError'
-    ) {
-      return res
-        .status(400)
-        .json({ error: err.errors?.[0]?.message || 'Invalid user data' });
-    }
-    next(err);
-  }
-});
+//     res.status(created ? 201 : 200).json(user); // 201 = Created, 200 = already existed
+//   } catch (err) {
+//     // Sequelize throws these when a validation rule (username length, email
+//     // format) or a unique constraint (username already taken) fails. Turn them
+//     // into a clean 400 instead of letting them fall through as a 500.
+//     if (
+//       err.name === 'SequelizeValidationError' ||
+//       err.name === 'SequelizeUniqueConstraintError'
+//     ) {
+//       return res
+//         .status(400)
+//         .json({ error: err.errors?.[0]?.message || 'Invalid user data' });
+//     }
+//     next(err);
+//   }
+// });
 
 // READ ME — GET /auth/me
 
 // Look the user up by the auth0Id from their token, so a user can only ever
 // read their OWN record.
-router.get('/me', async (req, res, next) => {
-  try {
-    const { auth0Id } = identityFromToken(req);
-    const user = await User.findOne({ where: { auth0Id } });
+// router.get('/me', async (req, res, next) => {
+//   try {
+//     const { auth0Id } = identityFromToken(req);
+//     const user = await User.findOne({ where: { auth0Id } });
 
-    if (!user) {
-      return res
-        .status(404)
-        .json({ error: 'User not found. Sync first with POST /auth/auth0.' });
-    }
+//     if (!user) {
+//       return res
+//         .status(404)
+//         .json({ error: 'User not found. Sync first with POST /auth/auth0.' });
+//     }
 
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-});
+//     res.json(user);
+//   } catch (err) {
+//     next(err);
+//   }
+// });
 
 module.exports = router;

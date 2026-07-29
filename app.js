@@ -7,7 +7,7 @@ const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions} = require("./models");
-// const { authRouter } = require("./models")
+const authRouter = require("./routes/auth.routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 const jwt = require("jsonwebtoken")
 
@@ -39,6 +39,9 @@ app.use(morgan('dev'))
 app.use(express.json({ limit: '10kb' }))
 app.use(limiter)
 app.use(cookieParser())
+
+// Routers
+app.use("/auth", authRouter);
 
 app.get("/", (request, response, next) => {
   try {
