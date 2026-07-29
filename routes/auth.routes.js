@@ -15,6 +15,7 @@
 const express = require('express');
 const { Users } = require('../models');
 const { jwtCheck, CLAIMS_NAMESPACE } = require('../middleware/auth');
+const loadCurrentUser = require('../middleware/loadCurrentUser');
 
 const router = express.Router();
 
@@ -80,18 +81,9 @@ router.post('/auth0', jwtCheck, async (request, response, next) => {
 
 // Look the user up by the auth0Id from their token, so a user can only ever
 // read their OWN record.
-router.get('/me', async (request, response, next) => {
+router.get('/me', jwtCheck, loadCurrentUser, async (request, response, next) => {
   try {
-    const auth0Id = request.auth.payload.sub;
-    const user = await Users.findOne({ where: { auth0Id } });
-
-    if (!user) {
-      return response.status(404).json({ 
-        error: 'Authenticated user not found. Sync first with POST /auth/auth0.' 
-      });
-    }
-
-    response.json(user);
+    response.json(request.user);
   } catch (error) {
     next(error);
   }
