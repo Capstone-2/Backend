@@ -2,39 +2,36 @@ const express = require("express");
 const router = express.Router();
 const { Users } = require("../models")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('../middleware/auth');
+const loadCurrentUser = require("../middleware/loadCurrentUser");
 
 // Add jwtCheck to a route for it to require a JWT token in the header to be accessed.
 
-// Finds user by the auth payload and adds the DB entry to the request if it was a success.
-async function loadCurrentUser(request, response, next) {
-  try {
-    const auth0Id = request.auth.payload.sub;
-    const foundUser = await Users.findOne({
-      where: { auth0Id, },
-    });
-
-    if (!foundUser) {
-      return response.status(404).json({
-        error: "Authenticated user has not been synchronized.",
-      });
-    }
-
-    request.user = foundUser;
-    next();
-  } catch (error) {
-    next(error);
-  }
+// Returns only public info we want from users
+function toPublicUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    displayName: user.displayName,
+    school: user.school,
+    totalStudyTime: user.totalStudyTime,
+  };
 }
+
+// Returns private info that only the authenticated user should be able to see.
+function toPrivateUser(user) {
+  return {
+    ...toPublicUser(user),
+    email: user.email,
+    activeStudyTime: user.activeStudyTime,
+  };
+}
+
 
 // Get all users public profile like id & displayName (Must not include any private info)
 router.get("/", async (request, response, next) => {
   try {
     const users = await Users.findAll();
-    const publicInfo = users.map(user => ({
-      userId: user.id,
-      name: user.name,
-      displayName: user.displayName,
-    }));
+    const publicInfo = users.map(user => (toPublicUser(user)));
     response.json(publicInfo);
   } catch (error) {
     next(error)
@@ -44,22 +41,34 @@ router.get("/", async (request, response, next) => {
 // Get a single users info (Must be protected)
 router.get('/me', jwtCheck, loadCurrentUser, async (request, response, next) => {
   try {
-    response.json(request.user);
+    const privateInfo = toPrivateUser(request.user)
+    response.json(privateInfo);
   } catch (error) {
     next(error);
   }
 });
 
-// Get a specific user
-router.get("/:id", async (req, res, next) => {
-  try {
-    const user = await Users.findByPk(req.params.id);
 
+router.get("/", async (request, response, next) => {
+  try {
+    const users = await Users.findAll();
+    const publicInfo = users.map(user => (toPublicUser(user)));
+    response.json(publicInfo);
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Get a specific user
+router.get("/:id", async (request, response, next) => {
+  try {
+    const user = await Users.findByPk(request.params.id);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return response.status(404).json({ error: "User not found" });
     }
 
-    res.json(user);
+    const publicInfo = toPublicUser(user)
+    response.json(publicInfo);
   } catch (error) {
     next(error);
   }
@@ -97,7 +106,7 @@ router.patch("/me", jwtCheck, loadCurrentUser,  async (request, response, next) 
 // Allow the user to delete their own profile (Must be protected)
 router.delete('/me', jwtCheck, loadCurrentUser, async (request, response, next) => {
   try {
-    request.user.destroy()
+    await request.user.destroy()
     response.json({ message: "Successfully deleted user!"});
   } catch (error) {
     next(error);
