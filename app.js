@@ -56,8 +56,6 @@ app.get('/api/protected', jwtCheck, (req, res) => {
   });
 });
 
-// app.use('/auth', authRouter);
-
 // ---------- error handler ----------
 // Express knows this is the error handler because it takes FOUR arguments.
 // Every next(err) from a route ends up here, so all errors funnel to one place.
