@@ -35,23 +35,6 @@ app.use(
     origin: process.env.FRONTEND_URL || "http://localhost:5173", // let our React frontend call this API
     credentials: true // allow cookies (needed once you add login/auth)
 }))
-
-app.use(jwtCheck)
-
-app.get('/authentication', async (req, res, next) => {
-    console.log(req.auth)
-    const response = await fetch(req.auth.payload.aud[1], {
-        headers: {
-            Authorization: `Bearer ${req.auth.token}`
-        }
-    })
-    const data = await response.json()
-    console.log(data)
-    res.json(data)
-})
-
-// ---------- Middleware ----------
-app.use(helmet())
 app.use(morgan('dev'))
 app.use(express.json({ limit: '10kb' }))
 app.use(limiter)
