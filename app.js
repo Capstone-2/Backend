@@ -6,7 +6,7 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
-const { db, Rooms, Users, Sessions} = require("./models");
+const { db, Rooms, Users, Sessions, Messages} = require("./models");
 const userRouter = require("./routes/users")
 const { authRouter } = require("./routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
@@ -115,10 +115,10 @@ app.use((error, request, response, next) => {
 // Never use sync({ force: true }) here — it DROPS your tables on every boot.
 async function startServer() {
   try {
-    //await db.authenticate();
+    await db.authenticate();
     console.log("🐘 Database connection established.");
 
-    //await db.sync();
+    await db.sync();
     console.log("🧩 Models synced.");
 
     server.listen(PORT, () => {
