@@ -2,6 +2,13 @@ const { DataTypes } = require("sequelize")
 const db = require("../db/index")
 
 const Users = db.define('User', {
+    // Important!
+    auth0Id: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+    },
+
     name: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -16,6 +23,7 @@ const Users = db.define('User', {
 
     school:{
         type: DataTypes.STRING,
+        allowNull: true,
     },
 
     totalStudyTime:{
