@@ -2,9 +2,19 @@ const db = require("../db"); // Database connection
 const Users = require("./Users");
 const Rooms = require("./Rooms");
 const Messages = require("./Messages")
-const Sessions = require("./Sessions")
+const Sessions = require("./Sessions");
 
 // Association
+Users.hasMany(Rooms, {
+  as: "createdRooms",
+  foreignKey: "adminUserId",
+  onDelete: "SET NULL"
+})
+Rooms.belongsTo(Users, {
+  as: "admin",
+  foreignKey: "adminUserId",
+  onDelete: "SET NULL"
+})
 
 Users.belongsToMany(Rooms, { through: Sessions });
 Rooms.belongsToMany(Users, { through: Sessions });
