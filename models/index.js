@@ -5,8 +5,8 @@ const Sessions = require("./sessions")
 
 // Association 
 
-Users.belongsToMany(Rooms,{through: Sessions})
-Rooms.belongsToMany(Users,{through: Sessions})
+ Users.belongsToMany(Rooms,{through: Sessions})
+ Rooms.belongsToMany(Users,{through: Sessions})
 
 
 

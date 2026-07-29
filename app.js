@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions} = require("./models");
+const userRouter = require("./routes/users")
 const { authRouter } = require("./routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
@@ -48,8 +49,9 @@ app.use(helmet());
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173", // let our React frontend call this API
-    credentials: true // allow cookies (needed once you add login/auth)
-}))
+    credentials: true, // allow cookies (needed once you add login/auth)
+  }),
+);
 app.use(morgan('dev'))
 app.use(express.json({ limit: '10kb' }))
 app.use(limiter)
@@ -57,6 +59,7 @@ app.use(cookieParser())
 
 // Routers
 app.use("/auth", authRouter);
+app.use("/users", userRouter);
 
 app.get("/", (request, response, next) => {
   try {
@@ -112,10 +115,10 @@ app.use((error, request, response, next) => {
 // Never use sync({ force: true }) here — it DROPS your tables on every boot.
 async function startServer() {
   try {
-    await db.authenticate();
+    //await db.authenticate();
     console.log("🐘 Database connection established.");
 
-    await db.sync();
+    //await db.sync();
     console.log("🧩 Models synced.");
 
       server.listen(PORT, () => {
