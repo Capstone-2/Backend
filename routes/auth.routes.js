@@ -21,7 +21,7 @@ const router = express.Router();
 
 // Protect EVERYTHING in this router.
 // But, you should also use this jwtCheck middleware for any routes you want to protect!
-router.use(jwtCheck);
+// router.use(jwtCheck);
 
 // Pull the user's identity out of the VERIFIED token — we never trust the
 // client for these, because Auth0 signed them.

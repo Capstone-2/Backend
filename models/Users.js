@@ -14,6 +14,11 @@ const Users = db.define('User', {
         allowNull: false,
     },
 
+    displayName:{
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+
     email:{
         type: DataTypes.STRING,
         allowNull: false,
@@ -24,11 +29,6 @@ const Users = db.define('User', {
     school:{
         type: DataTypes.STRING,
         allowNull: true,
-    },
-
-    displayName:{
-        type: DataTypes.STRING,
-        allowNull: false,
     },
 
     totalStudyTime:{
