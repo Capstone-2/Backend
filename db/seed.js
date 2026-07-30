@@ -52,6 +52,7 @@ const roomSeeds = [
   },
 ];
 
+
 async function seed() {
   try {
     await db.authenticate();
@@ -70,15 +71,49 @@ async function seed() {
     const [alex, jordan, sam] = users;
     const [quietRoom, groupRoom, lectureRoom] = rooms;
 
+    const sessionSeeds = [
+      {
+        userId: alex.id,
+        roomId: quietRoom.id,
+        startedAt: new Date("2026-07-28T14:00:00"),
+        endedAt: new Date("2026-07-28T14:30:00"),
+        durationSeconds: 1800,
+      },
+      {
+        userId: alex.id,
+        roomId: groupRoom.id,
+        startedAt: new Date("2026-07-28T16:00:00"),
+        endedAt: new Date("2026-07-28T17:00:00"),
+        durationSeconds: 3600,
+      },
+      {
+        userId: jordan.id,
+        roomId: groupRoom.id,
+        startedAt: new Date("2026-07-28T16:15:00"),
+        endedAt: new Date("2026-07-28T17:00:00"),
+        durationSeconds: 2700,
+      },
+      {
+        userId: sam.id,
+        roomId: lectureRoom.id,
+        startedAt: new Date("2026-07-29T10:00:00"),
+        endedAt: new Date("2026-07-29T10:45:00"),
+        durationSeconds: 2700,
+      },
+    ];
+
+    const sessions = await Sessions.bulkCreate(sessionSeeds)
+    console.log(`Seeded ${sessions.length} study sessions.`);
+
     // link users to rooms through Sessions, with role/joinedAt data
-    await quietRoom.addUser(alex, { through: { role: "host" } });
+    // await quietRoom.addUser(alex, { through: { role: "host" } });
 
-    await groupRoom.addUser(alex, { through: { role: "student" } });
-    await groupRoom.addUser(jordan, { through: { role: "host" } });
-    await groupRoom.addUser(sam, { through: { role: "student" } });
+    // await groupRoom.addUser(alex, { through: { role: "student" } });
+    // await groupRoom.addUser(jordan, { through: { role: "host" } });
+    // await groupRoom.addUser(sam, { through: { role: "student" } });
 
-    await lectureRoom.addUser(sam, { through: { role: "host" } });
-    await lectureRoom.addUser(jordan, { through: { role: "student" } });
+    // await lectureRoom.addUser(sam, { through: { role: "host" } });
+    // await lectureRoom.addUser(jordan, { through: { role: "student" } });
 
     console.log(" Linked users to rooms via Sessions.");
 
