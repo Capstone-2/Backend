@@ -3,6 +3,7 @@ const sessionsRouter = express.Router();
 
 const { Users, Rooms, Sessions } = require("../models");
 const { jwtCheck } = require("../middleware/auth");
+const { endSession } = require("../middleware/endSession")
 const loadCurrentUser = require("../middleware/loadCurrentUser");
 
 sessionsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, next) => {
@@ -48,5 +49,22 @@ sessionsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, ne
         next(error);
     }
 })
+
+sessionsRouter.patch("/:id/end", jwtCheck, loadCurrentUser, async (request, response, next) => {
+    try {
+      const sessionId = Number(request.params.id);
+      if (!Number.isInteger(sessionId) || sessionId < 1) {
+        return response.status(400).json({
+          error: "Invalid session ID.",
+        });
+      }
+
+      const endedSession = await endSession(sessionId, request.user.id);
+      response.status(200).json(endedSession);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 module.exports = sessionsRouter;
