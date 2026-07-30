@@ -1,40 +1,82 @@
+const { Rooms, Users, Sessions, Messages} = require("../models");
+
 function registerChatHandlers(io, socket) {
-  socket.on("join-room", ({ roomId, userId, displayName }) => {
-    const room = `room-${roomId}`;
-    socket.join(room);
-    socket.data.userId = userId;
-    socket.data.displayName = displayName;
-    socket.data.room = room;
+  socket.on("join-room", async ({ roomId }) => {
+    try {
+      // console.log("join-room received:", roomId);
+      const parsedRoomId = Number(roomId);
+      if (!Number.isInteger(parsedRoomId) || parsedRoomId < 1) {
+        return socket.emit("chat-error", {error: "Invalid room ID.",});
+      }
 
-    socket.to(room).emit("user-joined", { userId, displayName });
-  });
+      const foundRoom = await Rooms.findByPk(parsedRoomId);
+      if (!foundRoom) {
+        return socket.emit("chat-error", {
+          error: "Room not found.",
+        });
+      }
+      
+      // Keep one active study room per socket.
+      if (socket.data.roomName) {
+        socket.leave(socket.data.roomName);
+      }
 
-  socket.on("send-message", ({ roomId, text }) => {
-    const room = `room-${roomId}`;
-    io.to(room).emit("receive-message", {
-      userId: socket.data.userId,
-      displayName: socket.data.displayName,
-      text,
-      sentAt: new Date().toISOString(),
-    });
-  });
+      const roomName = `room-${parsedRoomId}`;
+      socket.join(roomName);
+      socket.data.roomId = parsedRoomId;
+      socket.data.roomName = roomName;
 
-  socket.on("leave-room", ({ roomId }) => {
-    const room = `room-${roomId}`;
-    socket.leave(room);
-    socket.to(room).emit("user-left", {
-      userId: socket.data.userId,
-      displayName: socket.data.displayName,
-    });
-  });
-
-  socket.on("disconnect", () => {
-    if (socket.data.room) {
-      socket.to(socket.data.room).emit("user-left", {
-        userId: socket.data.userId,
-        displayName: socket.data.displayName,
+      const user = socket.data.user;
+      socket.to(roomName).emit("user-joined", {
+        userId: user.id,
+        displayName: user.displayName,
       });
+    } catch(error) {
+      console.error("Join room failed:", error.message);
+      socket.emit("chat-error", {error: "Could not join room."});
     }
+  });
+
+  socket.on("send-message", ({ text }) => {
+    if (!socket.data.roomName) {
+      //console.log("Join a room before sending messages.")
+      return socket.emit("chat-error", {error: "Join a room before sending messages."});
+    }
+
+    const cleanText = text?.trim();
+    if (!cleanText) {
+      //console.log("Message cannot be empty.")
+      return socket.emit("chat-error", {error: "Message cannot be empty."});
+    }
+
+    const user = socket.data.user;
+    const messageSent = {
+      id: `${socket.id}-${Date.now()}`,
+      userId: user.id,
+      displayName: user.displayName,
+      text: cleanText,
+      sentAt: new Date().toISOString(),
+    }
+
+    // console.log(messageSent)
+    io.to(socket.data.roomName).emit("receive-message", messageSent);
+  });
+
+  socket.on("leave-room", () => {
+    const roomName = socket.data.roomName;
+    if (!roomName) {
+      return;
+    }
+
+    const user = socket.data.user;
+    socket.leave(roomName);
+    socket.to(roomName).emit("user-left", {
+      userId: user.id,
+      displayName: user.displayName,
+    });
+
+    socket.data.roomId = null;
+    socket.data.roomName = null;
   });
 }
 

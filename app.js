@@ -7,8 +7,7 @@ const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions, Messages} = require("./models");
-const userRouter = require("./routes/users")
-const { authRouter } = require("./routes")
+const { authRouter, userRouter, roomRouter } = require("./routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
 const http = require("http");
@@ -21,13 +20,101 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   },
 });
 
+function runExpressMiddleware(middleware, request) {
+  return new Promise((resolve, reject) => {
+    const response = {
+      setHeader() {},
+      getHeader() {return undefined},
+      removeHeader() {},
+    };
+
+    middleware(request, response, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+function createAuthRequest(socket, token) {
+  const headers = {
+    ...socket.request.headers,
+    authorization: `Bearer ${token}`,
+  };
+
+  return {
+    headers,
+    method: socket.request.method || "GET",
+    url: socket.request.url || "/socket.io/",
+    originalUrl: socket.request.url || "/socket.io/",
+    protocol: socket.request.socket?.encrypted ? "https" : "http",
+    socket: socket.request.socket,
+    app,
+    query: {},
+    body: {},
+
+    get(headerName) {
+      return headers[headerName.toLowerCase()];
+    },
+
+    header(headerName) {
+      return headers[headerName.toLowerCase()];
+    },
+
+    is() {
+      return false;
+    },
+  };
+}
+
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+      return next(new Error("Unauthorized"));
+    }
+
+    // Make the socket request look like a protected
+    // Express request.
+    const authRequest = createAuthRequest(socket, token);
+    await runExpressMiddleware(jwtCheck, authRequest);
+
+    const auth0Id = authRequest.auth?.payload?.sub;
+    if (!auth0Id) {
+      return next(new Error("Unauthorized"));
+    }
+
+    const user = await Users.findOne({
+      where: { auth0Id },
+    });
+
+    if (!user) {
+      return next(new Error("Authenticated user has not been synchronized."));
+    }
+
+    socket.data.user = {
+      id: user.id,
+      name: user.name,
+      displayName: user.displayName || user.name,
+    };
+
+    next();
+  } catch (error) {
+    console.error("Socket authentication failed:", error.message);
+
+    next(new Error("Unauthorized"));
+  }
+});
+
 io.on("connection", (socket) => {
-  console.log("socket connected:", socket.id);
+  console.log("socket connected:", socket.id, socket.data.user.id, socket.data.user.displayName);
   registerChatHandlers(io, socket);
 } );
 
@@ -60,6 +147,7 @@ app.use(cookieParser())
 // Routers
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
+app.use("/rooms", roomRouter)
 
 app.get("/", (request, response, next) => {
   try {
@@ -104,7 +192,7 @@ app.use((error, request, response, next) => {
   }
 
   response.status(status).json({
-    ERROR: message,
+    error: message,
   });
 });
 

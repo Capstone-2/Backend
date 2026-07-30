@@ -23,19 +23,6 @@ const router = express.Router();
 // But, you should also use this jwtCheck middleware for any routes you want to protect!
 // router.use(jwtCheck);
 
-// Pull the user's identity out of the VERIFIED token — we never trust the
-// client for these, because Auth0 signed them.
-//   - sub: the Auth0 user id (always present) -> stored as auth0Id
-//   - email / name: CUSTOM CLAIMS added by our Auth0 Post-Login Action
-function identityFromToken(req) {
-  const claims = req.auth.payload;
-  return {
-    auth0Id: claims.sub,
-    email: claims[`${CLAIMS_NAMESPACE}/email`] || null,
-    name: claims[`${CLAIMS_NAMESPACE}/name`] || null,
-  };
-}
-
 router.get("/test", (req, res) => {
   res.json({ message: "Auth router works" });
 });

@@ -2,6 +2,10 @@ const { DataTypes } = require("sequelize");
 const db = require("../db");
 
 const RoomsModel = db.define("Room", {
+  adminUserId: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // If we want public default rooms then some rooms need to have a null admin user.
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -27,6 +31,11 @@ const RoomsModel = db.define("Room", {
     type: DataTypes.STRING,
     allowNull: true,
     validate: { len: [4, 4] },
+  },
+  is_default: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
 });
 

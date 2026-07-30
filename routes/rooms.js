@@ -2,76 +2,111 @@ const express = require("express");
 const roomsRouter = express.Router();
 const { Rooms, Users } = require("../models");
 
-roomsRouter.get("/", async (req, res, next) => {
-  try {
-    const rooms = await Rooms.findAll();
-    if (!rooms) {
-      return res.status(404).json("no rooms here");
-    }
-    res.status(200).json(rooms);
-  } catch (error) {
-    next(error);
-  }
-});
+// Auth protection
+const { jwtCheck } = require("../middleware/auth");
+const loadCurrentUser = require("../middleware/loadCurrentUser");
+const requireRoomAdmin = require("../middleware/requireRoomAdmin");
 
-roomsRouter.get("/:id", async (req, res, next) => {
+roomsRouter.get("/", async (request, response, next) => {
   try {
-    const room = await Rooms.findByPk(Number(req.params.id), {
+    // Public info get the room and the user designated as the admin for that room.
+    const rooms = await Rooms.findAll({
+      attributes: {exclude: ["password"]},
       include: {
         model: Users,
+        as: "admin",
+        attributes: ["id", "name", "displayName"],
       },
     });
-    if (!room) {
-      return res.status(404).json("didn't find the room");
+    if (!rooms) {
+      return response.status(404).json("no rooms here");
     }
-    res.status(200).json(room);
+    response.status(200).json(rooms);
   } catch (error) {
     next(error);
   }
 });
 
-roomsRouter.post("/", async (req, res, next) => {
+roomsRouter.get("/:id", async (request, response, next) => {
   try {
-    const roomData = req.body;
+    const roomId = Number(request.params.id);
+    if (!Number.isInteger(roomId) || roomId < 1) {
+      return response.status(400).json({error: "Invalid room ID."});
+    }
+
+    const room = await Rooms.findByPk(Number(request.params.id), {
+      attributes: {exclude: ["password"]},
+      include: {model: Users, as: "admin", attributes: ["id", "name", "displayName"],},
+    });
+
+    if (!room) {
+      return response.status(404).json("Failed to find room");
+    }
+
+    response.status(200).json(room);
+  } catch (error) {
+    next(error);
+  }
+});
+
+roomsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, next) => {
+  try {
+    const roomData = request.body;
     //const userId = Number(req.body.userId)]
     //post a room, but also include the userId who posts
-    const newRoom = await Rooms.create(roomData);
+    const newRoom = await Rooms.create({
+      name: roomData.name,
+      description: roomData.description,
+      image: roomData.image,
+      capacity: roomData.capacity,
+      adminUserId: request.user.id, // IMPORTANT
+    });
+
     if (!newRoom) {
-      return res.status(404).json("fail to create");
+      return response.status(404).json("Failed to create a room.");
     }
-    res.status(200).json(newRoom);
+    response.status(201).json(newRoom);
   } catch (error) {
     next(error);
   }
 });
 
 //patch a room's name, image, capacity
-roomsRouter.patch("/:id", async (req, res, next) => {
+roomsRouter.patch("/:id", jwtCheck, loadCurrentUser, requireRoomAdmin, async (request, response, next) => {
   try {
-    const newRoom = req.body;
-    const room = await Rooms.findByPk(Number(req.params.id));
-    if (!room) {
-      return res.status(404).json("fail to update the room");
+    const updates = {}
+    if (request.body.name !== undefined) {
+      updates.name = request.body.name;
     }
-    await room.update(newRoom);
-    res.status(200).json(room);
+
+    if (request.body.description !== undefined) {
+      updates.description = request.body.description;
+    }
+
+    if (request.body.image !== undefined) {
+      updates.image = request.body.image;
+    }
+
+    if (request.body.capacity !== undefined) {
+      updates.capacity = request.body.capacity;
+    }
+
+    await request.room.update(updates);
+    response.status(200).json(request.room);
   } catch (error) {
     next(error);
   }
 });
 
-roomsRouter.delete("/:id", async (req, res, next) => {
+roomsRouter.delete("/:id", jwtCheck, loadCurrentUser, requireRoomAdmin, async (request, response, next) => {
   try {
-    //FOR LATER:check userId first, if the user is delete their own room
-    const room = await Rooms.findByPk(Number(req.params.id));
-
+    const room = request.room
     if (!room) {
-      return res.status(404).json("fail to delete the room");
+      return response.status(404).json("Failed to delete a room.");
     }
 
     await room.destroy();
-
-    res.status(200).send("deleted");
+    response.status(204).send();
   } catch (error) {
     next(error);
   }
