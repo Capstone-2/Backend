@@ -1,5 +1,37 @@
 const { Rooms, Users, Sessions, Messages} = require("../models");
 
+const MESSAGE_LIMIT_PER_ROOM = 50;  // Message history limit
+
+async function deleteOldMessages(roomId) {
+  const messageCount = await Messages.count({
+    where: {roomId},
+  });
+
+  const excessMessageCount = (messageCount - MESSAGE_LIMIT_PER_ROOM);
+  if (excessMessageCount <= 0) {
+    return;
+  }
+
+  const oldestMessages =await Messages.findAll({where: {roomId,},
+      attributes: ["id"],
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+      limit: excessMessageCount,
+      raw: true,
+    });
+
+  const oldestMessageIds = oldestMessages.map((message) => message.id);
+  if (oldestMessageIds.length === 0) {
+    return;
+  }
+
+  await Messages.destroy({
+    where: {id: oldestMessageIds},
+  });
+}
+
 function registerChatHandlers(io, socket) {
   socket.on("join-room", async ({ roomId }) => {
     try {
@@ -64,6 +96,13 @@ function registerChatHandlers(io, socket) {
       userId: user.id,
       roomId: socket.data.roomId,
     });
+
+    // Try to delete room messages if we are over the limit
+    try {
+      await deleteOldMessages(socket.data.roomId);
+    } catch (error) {
+      console.error("Failed to trim old messages:", error.message);
+    }
 
     // console.log(messageSent)
     io.to(socket.data.roomName).emit("receive-message", messageSent);
