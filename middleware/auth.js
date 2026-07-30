@@ -122,7 +122,7 @@ const requireAuth = async (request, response, next) => {
       // The token was valid but the user is gone (deleted account). Treat the
       // stale cookie as no credential at all.
       if (!user) {
-        clearTokenCookie(res);
+        clearTokenCookie(response);
         return response.status(401).json({ error: 'Session no longer valid' });
       }
 
@@ -144,7 +144,7 @@ const requireAuth = async (request, response, next) => {
 
       try {
         const user = await Users.findOne({
-          where: { auth0Id: req.auth.payload.sub },
+          where: { auth0Id: request.auth.payload.sub },
         });
 
         // Verified by Auth0, but we've never stored them. The frontend fixes

@@ -72,7 +72,7 @@ const uniqueUsername = async (preferred) => {
   let candidate = base;
   let suffix = 1;
   // Keep trying base, base1, base2... until we find one nobody has.
-  while (await User.findOne({ where: { username: candidate } })) {
+  while (await Users.findOne({ where: { username: candidate } })) {
     candidate = `${base}${suffix}`;
     suffix += 1;
   }
@@ -112,6 +112,7 @@ router.post('/signup', authLimiter, async (request, response, next) => {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
     const user = await Users.create({username, email, passwordHash})
     sendTokenCookie(response, user);
+    return response.status(201).json(user)
   } catch(error) {
     handleDbError(error, response, next)
   }
@@ -120,7 +121,7 @@ router.post('/signup', authLimiter, async (request, response, next) => {
 // ---------------------------------------------------------------------------
 // LOG IN — POST /auth/login
 // ---------------------------------------------------------------------------
-router.post('/login', async (request, response, next) => {
+router.post('/login', authLimiter, async (request, response, next) => {
   try {
     // `identifier` is whatever the user typed in the "Email or username" box.
     // We also accept a bare `email` or `username` key so the endpoint is easy

@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { Users } = require("../models")
-const { jwtCheck, CLAIMS_NAMESPACE } = require('../middleware/auth');
-const loadCurrentUser = require("../middleware/loadCurrentUser");
+const { requireAuth } = require('../middleware/auth');
 
-// Add jwtCheck to a route for it to require a JWT token in the header to be accessed.
+// Add requireAuth to a route for it to require a JWT token in the header to be accessed.
 
 // Returns only public info we want from users
 function toPublicUser(user) {
@@ -39,7 +38,7 @@ router.get("/", async (request, response, next) => {
 })
 
 // Get a single users info (Must be protected)
-router.get('/me', jwtCheck, loadCurrentUser, async (request, response, next) => {
+router.get('/me', requireAuth, async (request, response, next) => {
   try {
     const privateInfo = toPrivateUser(request.user)
     response.json(privateInfo);
@@ -76,7 +75,7 @@ router.get("/:id", async (request, response, next) => {
 
 
 // Update user profile (Must be protected & only allow certain fields to be changed.)
-router.patch("/me", jwtCheck, loadCurrentUser,  async (request, response, next) => {
+router.patch("/me", requireAuth,  async (request, response, next) => {
   try {
     const allowedUpdates = {}
     if (request.body.displayName !== undefined) {
@@ -104,7 +103,7 @@ router.patch("/me", jwtCheck, loadCurrentUser,  async (request, response, next) 
 });
 
 // Allow the user to delete their own profile (Must be protected)
-router.delete('/me', jwtCheck, loadCurrentUser, async (request, response, next) => {
+router.delete('/me', requireAuth, async (request, response, next) => {
   try {
     await request.user.destroy()
     response.json({ message: "Successfully deleted user!"});
