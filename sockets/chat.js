@@ -1,10 +1,10 @@
-const { Rooms, Users, Sessions, Messages} = require("../models");
+const { Rooms, Users, Sessions, Messages } = require("../models");
 
 const MESSAGE_LIMIT_PER_ROOM = 50;  // Message history limit
 
 async function deleteOldMessages(roomId) {
   const messageCount = await Messages.count({
-    where: {roomId},
+    where: { roomId },
   });
 
   const excessMessageCount = (messageCount - MESSAGE_LIMIT_PER_ROOM);
@@ -12,15 +12,16 @@ async function deleteOldMessages(roomId) {
     return;
   }
 
-  const oldestMessages =await Messages.findAll({where: {roomId,},
-      attributes: ["id"],
-      order: [
-        ["createdAt", "ASC"],
-        ["id", "ASC"],
-      ],
-      limit: excessMessageCount,
-      raw: true,
-    });
+  const oldestMessages = await Messages.findAll({
+    where: { roomId, },
+    attributes: ["id"],
+    order: [
+      ["createdAt", "ASC"],
+      ["id", "ASC"],
+    ],
+    limit: excessMessageCount,
+    raw: true,
+  });
 
   const oldestMessageIds = oldestMessages.map((message) => message.id);
   if (oldestMessageIds.length === 0) {
@@ -28,7 +29,7 @@ async function deleteOldMessages(roomId) {
   }
 
   await Messages.destroy({
-    where: {id: oldestMessageIds},
+    where: { id: oldestMessageIds },
   });
 }
 
@@ -38,7 +39,7 @@ function registerChatHandlers(io, socket) {
       // console.log("join-room received:", roomId);
       const parsedRoomId = Number(roomId);
       if (!Number.isInteger(parsedRoomId) || parsedRoomId < 1) {
-        return socket.emit("chat-error", {error: "Invalid room ID.",});
+        return socket.emit("chat-error", { error: "Invalid room ID.", });
       }
 
       const foundRoom = await Rooms.findByPk(parsedRoomId);
@@ -47,7 +48,7 @@ function registerChatHandlers(io, socket) {
           error: "Room not found.",
         });
       }
-      
+
       // Keep one active study room per socket.
       if (socket.data.roomName) {
         socket.leave(socket.data.roomName);
@@ -63,49 +64,56 @@ function registerChatHandlers(io, socket) {
         userId: user.id,
         displayName: user.displayName,
       });
-    } catch(error) {
+    } catch (error) {
       console.error("Join room failed:", error.message);
-      socket.emit("chat-error", {error: "Could not join room."});
+      socket.emit("chat-error", { error: "Could not join room." });
     }
   });
 
   socket.on("send-message", async ({ text }) => {
-    if (!socket.data.roomName) {
-      //console.log("Join a room before sending messages.")
-      return socket.emit("chat-error", {error: "Join a room before sending messages."});
-    }
-
-    const cleanText = text?.trim();
-    if (!cleanText) {
-      //console.log("Message cannot be empty.")
-      return socket.emit("chat-error", {error: "Message cannot be empty."});
-    }
-
-    const user = socket.data.user;
-    const messageSent = {
-      id: `${socket.id}-${Date.now()}`,
-      userId: user.id,
-      displayName: user.displayName,
-      text: cleanText,
-      sentAt: new Date().toISOString(),
-    }
-
-    // Save the chat message into the DB 'sentAt' will automatically be made as 'createdAt'
-    const savedMessage = await Messages.create({
-      text: cleanText,
-      userId: user.id,
-      roomId: socket.data.roomId,
-    });
-
-    // Try to delete room messages if we are over the limit
     try {
-      await deleteOldMessages(socket.data.roomId);
-    } catch (error) {
-      console.error("Failed to trim old messages:", error.message);
-    }
+      if (!socket.data.roomName) {
+        //console.log("Join a room before sending messages.")
+        return socket.emit("chat-error", { error: "Join a room before sending messages." });
+      }
 
-    // console.log(messageSent)
-    io.to(socket.data.roomName).emit("receive-message", messageSent);
+      const cleanText = text?.trim();
+      if (!cleanText) {
+        //console.log("Message cannot be empty.")
+        return socket.emit("chat-error", { error: "Message cannot be empty." });
+      }
+
+      const user = socket.data.user;
+
+      // Save the chat message into the DB 'sentAt' will automatically be made as 'createdAt'
+      const savedMessage = await Messages.create({
+        text: cleanText,
+        userId: user.id,
+        roomId: socket.data.roomId,
+      });
+
+      // Try to delete room messages if we are over the limit
+      try {
+        await deleteOldMessages(socket.data.roomId);
+      } catch (error) {
+        console.error("Failed to trim old messages:", error.message);
+      }
+
+      const messageSent = {
+        id: savedMessage.id,
+        userId: savedMessage.userId,
+        roomId: savedMessage.roomId,
+        displayName: user.displayName,
+        text: savedMessage.text,
+        sentAt: savedMessage.createdAt,
+      }
+
+      // console.log(messageSent)
+      io.to(socket.data.roomName).emit("receive-message", messageSent);
+    } catch (error) {
+      console.error("Failed to send message failed:", error.message);
+      socket.emit("chat-error", { error: "Could not send message." });
+    }
   });
 
   socket.on("leave-room", () => {

@@ -1,6 +1,6 @@
 const express = require("express");
 const roomsRouter = express.Router();
-const { Rooms, Users } = require("../models");
+const { Rooms, Users, Messages } = require("../models");
 
 // Auth protection
 const { jwtCheck } = require("../middleware/auth");
@@ -44,6 +44,35 @@ roomsRouter.get("/:id", async (request, response, next) => {
     }
 
     response.status(200).json(room);
+  } catch (error) {
+    next(error);
+  }
+});
+
+roomsRouter.get("/:id/messages", jwtCheck, loadCurrentUser, async (request, response, next) => {
+  try {
+    const roomId = Number(request.params.id);
+    if (!Number.isInteger(roomId) || roomId < 1) {
+      return response.status(400).json({
+        error: "Invalid room ID.",
+      });
+    }
+
+    const room = await Rooms.findByPk(roomId);
+    if (!room) {
+      return response.status(404).json({
+        error: "Room not found.",
+      });
+    }
+
+    const messages = await Messages.findAll({
+      where: {roomId},
+      include: {model: Users, attributes: ["id","name","displayName"]},
+      order: [["createdAt", "ASC"], ["id", "ASC"]],
+      limit: 100,
+    });
+
+    response.status(200).json(messages);
   } catch (error) {
     next(error);
   }
