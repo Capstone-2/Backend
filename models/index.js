@@ -2,7 +2,7 @@ const db = require("../db"); // Database connection
 const Users = require("./Users");
 const Rooms = require("./Rooms");
 const Messages = require("./Messages")
-const Sessions = require("./Sessions")
+const Sessions = require("./sessions")
 
 // Association
 
