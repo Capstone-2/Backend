@@ -4,7 +4,7 @@ const Rooms = require("./Rooms");
 const Messages = require("./Messages")
 const Sessions = require("./Sessions");
 
-// Association
+// Users to Rooms Association
 Users.hasMany(Rooms, {
   as: "createdRooms",
   foreignKey: "adminUserId",
@@ -16,8 +16,13 @@ Rooms.belongsTo(Users, {
   onDelete: "SET NULL"
 })
 
-Users.belongsToMany(Rooms, { through: Sessions });
-Rooms.belongsToMany(Users, { through: Sessions });
+// Users to Sessions Association
+Users.hasMany(Sessions, {foreignKey: "userId",})
+Sessions.belongsTo(Users, {foreignKey: "userId",})
+
+// Rooms to Sessions Association (Through table is no longer needed)
+Rooms.hasMany(Sessions, {foreignKey: "roomId",})
+Sessions.belongsTo(Rooms, {foreignKey: "roomId"})
 
 // Rooms to Messages Association
 Rooms.hasMany(Messages, {foreignKey: 'roomId'});

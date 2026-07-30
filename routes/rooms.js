@@ -69,7 +69,7 @@ roomsRouter.get("/:id/messages", jwtCheck, loadCurrentUser, async (request, resp
       where: {roomId},
       include: {model: Users, attributes: ["id","name","displayName"]},
       order: [["createdAt", "ASC"], ["id", "ASC"]],
-      limit: 100,
+      limit: 50,
     });
 
     response.status(200).json(messages);

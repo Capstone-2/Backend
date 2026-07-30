@@ -7,7 +7,7 @@ const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions, Messages} = require("./models");
-const { authRouter, userRouter, roomRouter } = require("./routes")
+const { authRouter, userRouter, roomRouter, sessionRouter } = require("./routes")
 const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
 const http = require("http");
@@ -148,6 +148,7 @@ app.use(cookieParser())
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
 app.use("/rooms", roomRouter)
+app.use("/sessions", sessionRouter)
 
 app.get("/", (request, response, next) => {
   try {

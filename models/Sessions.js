@@ -2,10 +2,20 @@ const { DataTypes } = require("sequelize");
 const db = require("../db")
 
 const Sessions = db.define('Session', {
-    name: {
-        type: DataTypes.STRING,
-        allowNull: true
-    }
+    startedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+    },
+
+    endedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+
+    durationSeconds: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
 })
 
 module.exports = Sessions;
