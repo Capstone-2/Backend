@@ -111,8 +111,8 @@ function registerChatHandlers(io, socket) {
       // console.log(messageSent)
       io.to(socket.data.roomName).emit("receive-message", messageSent);
     } catch (error) {
-      console.error("Join room failed:", error.message);
-      socket.emit("chat-error", { error: "Could not join room." });
+      console.error("Failed to send message failed:", error.message);
+      socket.emit("chat-error", { error: "Could not send message." });
     }
   });
 
