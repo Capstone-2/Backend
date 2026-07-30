@@ -3,7 +3,6 @@ const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
 const helmet = require("helmet");
-const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions, Messages} = require("./models");
@@ -142,7 +141,6 @@ app.use(
 app.use(morgan('dev'))
 app.use(express.json({ limit: '10kb' }))
 app.use(limiter)
-app.use(cookieParser())
 
 // Routers
 app.use("/auth", authRouter);
