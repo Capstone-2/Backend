@@ -1,5 +1,6 @@
 const { Users } = require("../models");
 
+// Finds user by the auth payload and adds the DB entry to the request if it was a success.
 async function loadCurrentUser(request, response, next) {
   try {
     const auth0Id = request.auth.payload.sub;

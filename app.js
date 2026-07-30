@@ -3,18 +3,16 @@ const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
 const helmet = require("helmet");
-const cookieParser = require("cookie-parser");
+const cookieParser = require("cookie-parser")
 const { rateLimit } = require("express-rate-limit");
 
-const { db, Rooms, Users, Sessions } = require("./models");
-const userRouter = require("./routes/users");
-const roomRouter = require("./routes/rooms");
-const { authRouter } = require("./routes");
-const { jwtCheck, CLAIMS_NAMESPACE } = require("./middleware/auth"); // verifies Auth0 tokens
+const { db, Rooms, Users, Sessions, Messages} = require("./models");
+const { authRouter, userRouter, roomRouter, sessionRouter } = require("./routes")
+const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
 const http = require("http");
-const { Server } = require("socket.io");
-const { registerChatHandlers } = require("./sockets/chat");
+const {Server} = require("socket.io");
+const {registerChatHandlers} = require("./sockets/chat");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,15 +20,103 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   },
 });
 
-io.on("connection", (socket) => {
-  console.log("socket connected:", socket.id);
-  registerChatHandlers(io, socket);
+function runExpressMiddleware(middleware, request) {
+  return new Promise((resolve, reject) => {
+    const response = {
+      setHeader() {},
+      getHeader() {return undefined},
+      removeHeader() {},
+    };
+
+    middleware(request, response, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+function createAuthRequest(socket, token) {
+  const headers = {
+    ...socket.request.headers,
+    authorization: `Bearer ${token}`,
+  };
+
+  return {
+    headers,
+    method: socket.request.method || "GET",
+    url: socket.request.url || "/socket.io/",
+    originalUrl: socket.request.url || "/socket.io/",
+    protocol: socket.request.socket?.encrypted ? "https" : "http",
+    socket: socket.request.socket,
+    app,
+    query: {},
+    body: {},
+
+    get(headerName) {
+      return headers[headerName.toLowerCase()];
+    },
+
+    header(headerName) {
+      return headers[headerName.toLowerCase()];
+    },
+
+    is() {
+      return false;
+    },
+  };
+}
+
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+      return next(new Error("Unauthorized"));
+    }
+
+    // Make the socket request look like a protected
+    // Express request.
+    const authRequest = createAuthRequest(socket, token);
+    await runExpressMiddleware(jwtCheck, authRequest);
+
+    const auth0Id = authRequest.auth?.payload?.sub;
+    if (!auth0Id) {
+      return next(new Error("Unauthorized"));
+    }
+
+    const user = await Users.findOne({
+      where: { auth0Id },
+    });
+
+    if (!user) {
+      return next(new Error("Authenticated user has not been synchronized."));
+    }
+
+    socket.data.user = {
+      id: user.id,
+      name: user.name,
+      displayName: user.displayName || user.name,
+    };
+
+    next();
+  } catch (error) {
+    console.error("Socket authentication failed:", error.message);
+
+    next(new Error("Unauthorized"));
+  }
 });
+
+io.on("connection", (socket) => {
+  console.log("socket connected:", socket.id, socket.data.user.id, socket.data.user.displayName);
+  registerChatHandlers(io, socket);
+} );
 
 // Deployed apps sit behind a proxy (Render, ...). This tells Express
 // to trust it, so rate-limiting sees the real visitor IP and secure cookies work.
@@ -53,15 +139,16 @@ app.use(
     credentials: true, // allow cookies (needed once you add login/auth)
   }),
 );
-app.use(morgan("dev"));
-app.use(express.json({ limit: "10kb" }));
-app.use(limiter);
-app.use(cookieParser());
+app.use(morgan('dev'))
+app.use(express.json({ limit: '10kb' }))
+app.use(limiter)
+app.use(cookieParser())
 
 // Routers
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
-app.use("/rooms", roomRouter);
+app.use("/rooms", roomRouter)
+app.use("/sessions", sessionRouter)
 
 app.get("/", (request, response, next) => {
   try {
@@ -71,9 +158,9 @@ app.get("/", (request, response, next) => {
   }
 });
 
-app.get("/api/protected", jwtCheck, (req, res) => {
+app.get('/api/protected', jwtCheck, (req, res) => {
   res.json({
-    message: "🔒 Your token is valid — you reached a protected route!",
+    message: '🔒 Your token is valid — you reached a protected route!',
     userId: req.auth.payload.sub, // the Auth0 user id from the token
   });
 });
@@ -88,10 +175,7 @@ app.use((error, request, response, next) => {
 
   const status = error.status || error.statusCode || 500;
   console.error("ERROR:", {
-    name: error.name,
-    status,
-    code: error.code,
-    message: error.message,
+    name: error.name, status, code: error.code, message: error.message,
   });
 
   // Auth0 errors may include a WWW-Authenticate header.
@@ -109,7 +193,7 @@ app.use((error, request, response, next) => {
   }
 
   response.status(status).json({
-    ERROR: message,
+    error: message,
   });
 });
 
@@ -120,7 +204,7 @@ app.use((error, request, response, next) => {
 // Never use sync({ force: true }) here — it DROPS your tables on every boot.
 async function startServer() {
   try {
-    //await db.authenticate();
+    await db.authenticate();
     console.log("🐘 Database connection established.");
 
     await db.sync();
