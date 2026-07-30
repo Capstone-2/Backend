@@ -37,7 +37,7 @@ function registerChatHandlers(io, socket) {
     }
   });
 
-  socket.on("send-message", ({ text }) => {
+  socket.on("send-message", async ({ text }) => {
     if (!socket.data.roomName) {
       //console.log("Join a room before sending messages.")
       return socket.emit("chat-error", {error: "Join a room before sending messages."});
@@ -57,6 +57,13 @@ function registerChatHandlers(io, socket) {
       text: cleanText,
       sentAt: new Date().toISOString(),
     }
+
+    // Save the chat message into the DB 'sentAt' will automatically be made as 'createdAt'
+    const savedMessage = await Messages.create({
+      text: cleanText,
+      userId: user.id,
+      roomId: socket.data.roomId,
+    });
 
     // console.log(messageSent)
     io.to(socket.data.roomName).emit("receive-message", messageSent);
