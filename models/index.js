@@ -1,14 +1,12 @@
 const db = require("../db"); // Database connection
 const Users = require("./Users");
 const Rooms = require("./Rooms");
-const Sessions = require("./sessions")
+const Sessions = require("./sessions");
 
-// Association 
+// Association
 
- Users.belongsToMany(Rooms,{through: Sessions})
- Rooms.belongsToMany(Users,{through: Sessions})
-
-
+Users.belongsToMany(Rooms, { through: Sessions, foreignKey: "userId" });
+Rooms.belongsToMany(Users, { through: Sessions, foreignKey: "roomId" });
 
 module.exports = {
   db,

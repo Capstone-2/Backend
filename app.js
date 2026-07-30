@@ -3,17 +3,18 @@ const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
 const helmet = require("helmet");
-const cookieParser = require("cookie-parser")
+const cookieParser = require("cookie-parser");
 const { rateLimit } = require("express-rate-limit");
 
-const { db, Rooms, Users, Sessions} = require("./models");
-const userRouter = require("./routes/users")
-const { authRouter } = require("./routes")
-const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
+const { db, Rooms, Users, Sessions } = require("./models");
+const userRouter = require("./routes/users");
+const roomRouter = require("./routes/rooms");
+const { authRouter } = require("./routes");
+const { jwtCheck, CLAIMS_NAMESPACE } = require("./middleware/auth"); // verifies Auth0 tokens
 
 const http = require("http");
-const {Server} = require("socket.io");
-const {registerChatHandlers} = require("./sockets/chat");
+const { Server } = require("socket.io");
+const { registerChatHandlers } = require("./sockets/chat");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +30,7 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("socket connected:", socket.id);
   registerChatHandlers(io, socket);
-} );
+});
 
 // Deployed apps sit behind a proxy (Render, ...). This tells Express
 // to trust it, so rate-limiting sees the real visitor IP and secure cookies work.
@@ -52,14 +53,15 @@ app.use(
     credentials: true, // allow cookies (needed once you add login/auth)
   }),
 );
-app.use(morgan('dev'))
-app.use(express.json({ limit: '10kb' }))
-app.use(limiter)
-app.use(cookieParser())
+app.use(morgan("dev"));
+app.use(express.json({ limit: "10kb" }));
+app.use(limiter);
+app.use(cookieParser());
 
 // Routers
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
+app.use("/rooms", roomRouter);
 
 app.get("/", (request, response, next) => {
   try {
@@ -69,9 +71,9 @@ app.get("/", (request, response, next) => {
   }
 });
 
-app.get('/api/protected', jwtCheck, (req, res) => {
+app.get("/api/protected", jwtCheck, (req, res) => {
   res.json({
-    message: '🔒 Your token is valid — you reached a protected route!',
+    message: "🔒 Your token is valid — you reached a protected route!",
     userId: req.auth.payload.sub, // the Auth0 user id from the token
   });
 });
@@ -86,7 +88,10 @@ app.use((error, request, response, next) => {
 
   const status = error.status || error.statusCode || 500;
   console.error("ERROR:", {
-    name: error.name, status, code: error.code, message: error.message,
+    name: error.name,
+    status,
+    code: error.code,
+    message: error.message,
   });
 
   // Auth0 errors may include a WWW-Authenticate header.
@@ -118,7 +123,7 @@ async function startServer() {
     //await db.authenticate();
     console.log("🐘 Database connection established.");
 
-    //await db.sync();
+    await db.sync();
     console.log("🧩 Models synced.");
 
     server.listen(PORT, () => {

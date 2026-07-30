@@ -31,18 +31,21 @@ const roomSeeds = [
     description: "For focused, silent work",
     capacity: 2,
     password: null,
+    image: "/quiet.jpg",
   },
   {
     name: "Group Project Room",
     description: "Whiteboard, good for group work",
     capacity: 4,
     password: "1234",
+    image: "/group.jpg",
   },
   {
     name: "Lecture Review Room",
     description: "For reviewing lecture notes together",
     capacity: 8,
     password: null,
+    image: "/lecture1.jpg",
   },
 ];
 
