@@ -1,4 +1,5 @@
 const { Rooms, Users, Sessions, Messages } = require("../models");
+const { endSession } = require("../middleware/endSession")
 
 const MESSAGE_LIMIT_PER_ROOM = 50;  // Message history limit
 
@@ -31,6 +32,34 @@ async function deleteOldMessages(roomId) {
   await Messages.destroy({
     where: { id: oldestMessageIds },
   });
+}
+
+async function endSocketStudySession(socket) {
+  const userId = socket.data.user?.id;
+  const roomId = socket.data.roomId;
+
+  if (!userId || !roomId) {
+    return null;
+  }
+
+  const activeSession = await Sessions.findOne({
+    where: {userId, roomId, endedAt: null}
+  });
+
+  if (!activeSession) {
+    return null;
+  }
+
+  try {
+    return await endSession(activeSession.id, userId);
+  } catch (error) {
+    // The REST stop route may have ended it at nearly
+    // the same moment as the socket disconnected.
+    if (error.status === 404 || error.status === 409) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 function registerChatHandlers(io, socket) {
@@ -116,18 +145,53 @@ function registerChatHandlers(io, socket) {
     }
   });
 
-  socket.on("leave-room", () => {
+  socket.on("leave-room", async () => {
     const roomName = socket.data.roomName;
     if (!roomName) {
       return;
     }
 
     const user = socket.data.user;
+
+    try {
+      const endedSession = await endSocketStudySession(socket)
+      if (endedSession) {
+        console.log("Study session ended on room leave:", endedSession.id)
+      }
+    } catch(error) {
+      console.error("Failed to end session on room leave:", error.message)
+      socket.emit("chat-error", {error: "You left the room, but your study session could not be ended."})
+    }
+
     socket.leave(roomName);
     socket.to(roomName).emit("user-left", {
       userId: user.id,
       displayName: user.displayName,
     });
+
+    socket.data.roomId = null;
+    socket.data.roomName = null;
+  });
+
+  socket.on("disconnect", async (reason) => {
+    const roomName = socket.data.roomName;
+    const user = socket.data.user;
+
+    try {
+      const endedSession = await endSocketStudySession(socket);
+      if (endedSession) {
+        console.log("Study session ended on disconnect:", endedSession.id, reason);
+      }
+    } catch (error) {
+      console.error("Failed to end session on disconnect:", error.message);
+    }
+
+    if (roomName && user) {
+      io.to(roomName).emit("user-left", {
+        userId: user.id,
+        displayName: user.displayName,
+      });
+    }
 
     socket.data.roomId = null;
     socket.data.roomName = null;
