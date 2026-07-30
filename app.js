@@ -8,7 +8,7 @@ const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions, Messages} = require("./models");
 const { authRouter, userRouter, roomRouter, sessionRouter } = require("./routes")
-const { jwtCheck, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
+const { jwtCheck, requireAuth, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
 const http = require("http");
 const {Server} = require("socket.io");
@@ -158,10 +158,13 @@ app.get("/", (request, response, next) => {
   }
 });
 
-app.get('/api/protected', jwtCheck, (req, res) => {
-  res.json({
+app.get('/api/protected', requireAuth, (request, response) => {
+  response.json({
     message: '🔒 Your token is valid — you reached a protected route!',
-    userId: req.auth.payload.sub, // the Auth0 user id from the token
+    userId: request.user.id,
+    username: request.user.username,
+    // How did they log in? Handy to see the two doors working.
+    via: request.user.auth0Id ? 'auth0' : 'password',
   });
 });
 

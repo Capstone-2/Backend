@@ -4,21 +4,21 @@ const { db, Rooms, Users, Sessions } = require("../models");
 const userSeeds = [
   {
     auth0Id: "auth0|user1",
-    name: "Alex Kim",
+    username: "Alex Kim",
     email: "alex@example.com",
     school: "NYU",
     displayName: "Alex",
   },
   {
     auth0Id: "auth0|user2",
-    name: "Jordan Lee",
+    username: "Jordan Lee",
     email: "jordan@example.com",
     school: "Columbia",
     displayName: "Jordan",
   },
   {
     auth0Id: "auth0|user3",
-    name: "Sam Rivera",
+    username: "Sam Rivera",
     email: "sam@example.com",
     school: "NYU",
     displayName: "Sam",
