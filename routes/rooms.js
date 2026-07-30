@@ -29,12 +29,20 @@ roomsRouter.get("/", async (request, response, next) => {
 
 roomsRouter.get("/:id", async (request, response, next) => {
   try {
+    const roomId = Number(request.params.id);
+    if (!Number.isInteger(roomId) || roomId < 1) {
+      return response.status(400).json({error: "Invalid room ID."});
+    }
+
     const room = await Rooms.findByPk(Number(request.params.id), {
-      include: {model: Users, attributes: ["id", "name", "displayName"],},
+      attributes: {exclude: ["password"]},
+      include: {model: Users, as: "admin", attributes: ["id", "name", "displayName"],},
     });
+
     if (!room) {
       return response.status(404).json("Failed to find room");
     }
+
     response.status(200).json(room);
   } catch (error) {
     next(error);
@@ -67,14 +75,12 @@ roomsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, next)
 roomsRouter.patch("/:id", jwtCheck, loadCurrentUser, requireRoomAdmin, async (request, response, next) => {
   try {
     const updates = {}
-
     if (request.body.name !== undefined) {
       updates.name = request.body.name;
     }
 
     if (request.body.description !== undefined) {
-      updates.description =
-        request.body.description;
+      updates.description = request.body.description;
     }
 
     if (request.body.image !== undefined) {
