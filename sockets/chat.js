@@ -82,13 +82,6 @@ function registerChatHandlers(io, socket) {
     }
 
     const user = socket.data.user;
-    const messageSent = {
-      id: `${socket.id}-${Date.now()}`,
-      userId: user.id,
-      displayName: user.displayName,
-      text: cleanText,
-      sentAt: new Date().toISOString(),
-    }
 
     // Save the chat message into the DB 'sentAt' will automatically be made as 'createdAt'
     const savedMessage = await Messages.create({
@@ -102,6 +95,15 @@ function registerChatHandlers(io, socket) {
       await deleteOldMessages(socket.data.roomId);
     } catch (error) {
       console.error("Failed to trim old messages:", error.message);
+    }
+
+    const messageSent = {
+      id: savedMessage.id,
+      userId: savedMessage.userId,
+      roomId: savedMessage.roomId,
+      displayName: user.displayName,
+      text: savedMessage.text,
+      sentAt: savedMessage.createdAt,
     }
 
     // console.log(messageSent)
