@@ -19,7 +19,7 @@ const RoomsModel = db.define("Room", {
   },
   image: {
     type: DataTypes.TEXT,
-    //a default image
+    defaultValue: "/default.jpg",
     allowNull: true,
   },
   capacity: {

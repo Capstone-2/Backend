@@ -8,6 +8,7 @@ const userSeeds = [
     email: "alex@example.com",
     school: "NYU",
     displayName: "Alex",
+    icon: "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHpuNHBrdTFuaWkydWd5OThqcHpnNXBkemdtZmFyd3I5azh2MWFwOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/YyBJAtdE0J1ICApl71/giphy.gif",
   },
   {
     auth0Id: "auth0|user2",
@@ -15,13 +16,15 @@ const userSeeds = [
     email: "jordan@example.com",
     school: "Columbia",
     displayName: "Jordan",
+    icon: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExb3ZnZ3BjZTFtand1Z2lhc2o5cHcycmdsODVjbXUxZWEyMTl3NXg4ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7KgtqaBqt7fEOw9JyI/giphy.gif",
   },
   {
     auth0Id: "auth0|user3",
     username: "Sam Rivera",
     email: "sam@example.com",
-    school: "NYU",
+    school: "CUNY",
     displayName: "Sam",
+    icon: "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2ljMGppZzU4cXpycnA0dWdiZ2s4YWR0cWoxZm1idjI3ejludXJtaCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LHZyixOnHwDDy/giphy.gif",
   },
 ];
 
@@ -33,6 +36,7 @@ const roomSeeds = [
     password: null,
     adminUserId: null,
     is_default: true,
+    image: "/quiet.jpg",
   },
   {
     name: "Group Project Room",
@@ -41,6 +45,7 @@ const roomSeeds = [
     password: "1234",
     adminUserId: null,
     is_default: true,
+    image: "/group.jpg",
   },
   {
     name: "Lecture Review Room",
@@ -49,9 +54,9 @@ const roomSeeds = [
     password: null,
     adminUserId: null,
     is_default: true,
+    image: "/lecture1.jpg",
   },
 ];
-
 
 async function seed() {
   try {
@@ -102,7 +107,7 @@ async function seed() {
       },
     ];
 
-    const sessions = await Sessions.bulkCreate(sessionSeeds)
+    const sessions = await Sessions.bulkCreate(sessionSeeds);
     console.log(`Seeded ${sessions.length} study sessions.`);
 
     // link users to rooms through Sessions, with role/joinedAt data
