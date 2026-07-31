@@ -3,8 +3,7 @@ const roomsRouter = express.Router();
 const { Rooms, Users, Messages } = require("../models");
 
 // Auth protection
-const { jwtCheck } = require("../middleware/auth");
-const loadCurrentUser = require("../middleware/loadCurrentUser");
+const { requireAuth } = require("../middleware/auth");
 const requireRoomAdmin = require("../middleware/requireRoomAdmin");
 
 roomsRouter.get("/", async (request, response, next) => {
@@ -15,7 +14,7 @@ roomsRouter.get("/", async (request, response, next) => {
       include: {
         model: Users,
         as: "admin",
-        attributes: ["id", "name", "displayName"],
+        attributes: ["id", "username", "displayName"],
       },
     });
     if (!rooms) {
@@ -36,7 +35,7 @@ roomsRouter.get("/:id", async (request, response, next) => {
 
     const room = await Rooms.findByPk(Number(request.params.id), {
       attributes: {exclude: ["password"]},
-      include: {model: Users, as: "admin", attributes: ["id", "name", "displayName"],},
+      include: {model: Users, as: "admin", attributes: ["id", "username", "displayName"],},
     });
 
     if (!room) {
@@ -49,7 +48,7 @@ roomsRouter.get("/:id", async (request, response, next) => {
   }
 });
 
-roomsRouter.get("/:id/messages", jwtCheck, loadCurrentUser, async (request, response, next) => {
+roomsRouter.get("/:id/messages", requireAuth, async (request, response, next) => {
   try {
     const roomId = Number(request.params.id);
     if (!Number.isInteger(roomId) || roomId < 1) {
@@ -67,7 +66,7 @@ roomsRouter.get("/:id/messages", jwtCheck, loadCurrentUser, async (request, resp
 
     const messages = await Messages.findAll({
       where: {roomId},
-      include: {model: Users, attributes: ["id","name","displayName"]},
+      include: {model: Users, attributes: ["id","username","displayName"]},
       order: [["createdAt", "ASC"], ["id", "ASC"]],
       limit: 50,
     });
@@ -78,7 +77,7 @@ roomsRouter.get("/:id/messages", jwtCheck, loadCurrentUser, async (request, resp
   }
 });
 
-roomsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, next) => {
+roomsRouter.post("/", requireAuth, async (request, response, next) => {
   try {
     const roomData = request.body;
     //const userId = Number(req.body.userId)]
@@ -101,7 +100,7 @@ roomsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, next)
 });
 
 //patch a room's name, image, capacity
-roomsRouter.patch("/:id", jwtCheck, loadCurrentUser, requireRoomAdmin, async (request, response, next) => {
+roomsRouter.patch("/:id", requireAuth, requireRoomAdmin, async (request, response, next) => {
   try {
     const updates = {}
     if (request.body.name !== undefined) {
@@ -127,7 +126,7 @@ roomsRouter.patch("/:id", jwtCheck, loadCurrentUser, requireRoomAdmin, async (re
   }
 });
 
-roomsRouter.delete("/:id", jwtCheck, loadCurrentUser, requireRoomAdmin, async (request, response, next) => {
+roomsRouter.delete("/:id", requireAuth, requireRoomAdmin, async (request, response, next) => {
   try {
     const room = request.room
     if (!room) {

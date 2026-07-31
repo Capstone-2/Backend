@@ -8,7 +8,7 @@ const { rateLimit } = require("express-rate-limit");
 
 const { db, Rooms, Users, Sessions, Messages} = require("./models");
 const { authRouter, userRouter, roomRouter, sessionRouter } = require("./routes")
-const { jwtCheck, requireAuth, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
+const { jwtCheck, requireAuth, getUserFromLocalToken, getUserFromAuth0Payload, COOKIE_NAME, CLAIMS_NAMESPACE } = require('./middleware/auth'); // verifies Auth0 tokens
 
 const http = require("http");
 const {Server} = require("socket.io");
@@ -74,41 +74,75 @@ function createAuthRequest(socket, token) {
   };
 }
 
+function getCookieValue(cookieHeader, cookieName) {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const cookies = cookieHeader.split(";");
+  for (const cookie of cookies) {
+    const trimmedCookie = cookie.trim();
+    const separatorIndex = trimmedCookie.indexOf("=");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const name = trimmedCookie.slice(0, separatorIndex);
+    const value = trimmedCookie.slice(separatorIndex + 1);
+    if (name === cookieName) {
+      return decodeURIComponent(value);
+    }
+  }
+
+  return null;
+}
+
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth?.token;
-    if (!token) {
-      return next(new Error("Unauthorized"));
+    const auth0Token = socket.handshake.auth?.token;
+    let user = null;
+
+    if (auth0Token) {
+      /*
+       * Door 1: Auth0
+       *
+       * Auth0 users explicitly send their
+       * access token in handshake.auth.
+       */
+      const authRequest = createAuthRequest(socket, auth0Token);
+      await runExpressMiddleware(jwtCheck, authRequest);
+      user = await getUserFromAuth0Payload(authRequest.auth?.payload);
+    } else {
+      /*
+       * Door 2: local password login
+       *
+       * The browser sends our HttpOnly
+       * JWT in the handshake's Cookie
+       * header.
+       */
+      const cookieHeader = socket.request.headers.cookie;
+      const localToken = getCookieValue(cookieHeader, COOKIE_NAME);
+
+      if (!localToken) {
+        return next(new Error("Authentication required"));
+      }
+
+      user = await getUserFromLocalToken(localToken);
     }
-
-    // Make the socket request look like a protected
-    // Express request.
-    const authRequest = createAuthRequest(socket, token);
-    await runExpressMiddleware(jwtCheck, authRequest);
-
-    const auth0Id = authRequest.auth?.payload?.sub;
-    if (!auth0Id) {
-      return next(new Error("Unauthorized"));
-    }
-
-    const user = await Users.findOne({
-      where: { auth0Id },
-    });
-
+    
     if (!user) {
-      return next(new Error("Authenticated user has not been synchronized."));
+      return next(new Error("Authenticated user not found"));
     }
 
     socket.data.user = {
       id: user.id,
-      name: user.name,
-      displayName: user.displayName || user.name,
+      username: user.username,
+      displayName: user.displayName || user.username ||  user.name,
     };
 
     next();
   } catch (error) {
     console.error("Socket authentication failed:", error.message);
-
     next(new Error("Unauthorized"));
   }
 });
