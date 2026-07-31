@@ -1,7 +1,7 @@
 const { Rooms, Users, Sessions, Messages } = require("../models");
 const { endSession } = require("../middleware/endSession")
 
-const MESSAGE_LIMIT_PER_ROOM = 50;  // Message history limit
+const MESSAGE_LIMIT_PER_ROOM = 100;  // Message history limit
 
 async function deleteOldMessages(roomId) {
   const messageCount = await Messages.count({
