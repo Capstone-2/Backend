@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { Users } = require("../models")
-const { requireAuth } = require('../middleware/auth');
+const { Users } = require("../models");
+const { requireAuth } = require("../middleware/auth");
 
 // Add requireAuth to a route for it to require a JWT token in the header to be accessed.
 
@@ -13,6 +13,7 @@ function toPublicUser(user) {
     displayName: user.displayName,
     school: user.school,
     totalStudyTime: user.totalStudyTime,
+    icon: user.icon,
   };
 }
 
@@ -25,22 +26,21 @@ function toPrivateUser(user) {
   };
 }
 
-
 // Get all users public profile like id & displayName (Must not include any private info)
 router.get("/", async (request, response, next) => {
   try {
     const users = await Users.findAll();
-    const publicInfo = users.map(user => (toPublicUser(user)));
+    const publicInfo = users.map((user) => toPublicUser(user));
     response.json(publicInfo);
   } catch (error) {
-    next(error)
+    next(error);
   }
-})
+});
 
 // Get a single users info (Must be protected)
-router.get('/me', requireAuth, async (request, response, next) => {
+router.get("/me", requireAuth, async (request, response, next) => {
   try {
-    const privateInfo = toPrivateUser(request.user)
+    const privateInfo = toPrivateUser(request.user);
     response.json(privateInfo);
   } catch (error) {
     next(error);
@@ -55,18 +55,17 @@ router.get("/:id", async (request, response, next) => {
       return response.status(404).json({ error: "User not found" });
     }
 
-    const publicInfo = toPublicUser(user)
+    const publicInfo = toPublicUser(user);
     response.json(publicInfo);
   } catch (error) {
     next(error);
   }
 });
 
-
 // Update user profile (Must be protected & only allow certain fields to be changed.)
-router.patch("/me", requireAuth,  async (request, response, next) => {
+router.patch("/me", requireAuth, async (request, response, next) => {
   try {
-    const allowedUpdates = {}
+    const allowedUpdates = {};
     if (request.body.displayName !== undefined) {
       allowedUpdates.displayName = request.body.displayName;
     }
@@ -78,9 +77,9 @@ router.patch("/me", requireAuth,  async (request, response, next) => {
       return response.status(404).json({ error: "User not found" });
     }
 
-    await request.user.update(allowedUpdates)
+    await request.user.update(allowedUpdates);
 
-    const publicInfo = toPrivateUser(request.user)
+    const publicInfo = toPrivateUser(request.user);
     response.json(publicInfo);
   } catch (error) {
     next(error);
@@ -88,13 +87,13 @@ router.patch("/me", requireAuth,  async (request, response, next) => {
 });
 
 // Allow the user to delete their own profile (Must be protected)
-router.delete('/me', requireAuth, async (request, response, next) => {
+router.delete("/me", requireAuth, async (request, response, next) => {
   try {
-    await request.user.destroy()
-    response.json({ message: "Successfully deleted user!"});
+    await request.user.destroy();
+    response.json({ message: "Successfully deleted user!" });
   } catch (error) {
     next(error);
   }
 });
 
-module.exports = router
+module.exports = router;
