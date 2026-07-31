@@ -188,7 +188,6 @@ const identityFromToken = (request) => {
   return {
     auth0Id: claims.sub,
     email: claims[`${CLAIMS_NAMESPACE}/email`] || null,
-    // name: claims[`${CLAIMS_NAMESPACE}/name`] || null,
   };
 };
 
