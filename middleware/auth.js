@@ -127,29 +127,8 @@ const requireAuth = async (request, response, next) => {
   const cookieToken = request.cookies?.[COOKIE_NAME];
   const bearer = request.headers.authorization?.startsWith('Bearer ');
 
-  // --- door 1: our own cookie JWT ---
-  if (cookieToken) {
-    try {
-      // verify() re-computes the signature with our secret and checks expiry.
-      // It THROWS on a forged or expired token — that's the whole point.
-      const user = await getUserFromLocalToken(cookieToken)
 
-      // The token was valid but the user is gone (deleted account). Treat the
-      // stale cookie as no credential at all.
-      if (!user) {
-        clearTokenCookie(response);
-        return response.status(401).json({ error: 'Session no longer valid' });
-      }
-
-      request.user = user;
-      return next();
-    } catch {
-      clearTokenCookie(response);
-      return response.status(401).json({ error: 'Invalid or expired token' });
-    }
-  }
-
-  // --- door 2: an Auth0 Bearer token ---
+  // --- door 1: an Auth0 Bearer token ---
   if (bearer) {
     // jwtCheck is ordinary Express middleware, so we can call it by hand and
     // pass it our own callback as `next`. It calls back with an error if the
@@ -175,6 +154,28 @@ const requireAuth = async (request, response, next) => {
     });
   }
 
+  // --- door 2: our own cookie JWT ---
+  if (cookieToken) {
+    try {
+      // verify() re-computes the signature with our secret and checks expiry.
+      // It THROWS on a forged or expired token — that's the whole point.
+      const user = await getUserFromLocalToken(cookieToken)
+
+      // The token was valid but the user is gone (deleted account). Treat the
+      // stale cookie as no credential at all.
+      if (!user) {
+        clearTokenCookie(response);
+        return response.status(401).json({ error: 'Session no longer valid' });
+      }
+
+      request.user = user;
+      return next();
+    } catch {
+      clearTokenCookie(response);
+      return response.status(401).json({ error: 'Invalid or expired token' });
+    }
+  }
+
   // --- no credential at all ---
   return response.status(401).json({ error: 'Authentication required' });
 };
@@ -188,7 +189,6 @@ const identityFromToken = (request) => {
   return {
     auth0Id: claims.sub,
     email: claims[`${CLAIMS_NAMESPACE}/email`] || null,
-    // name: claims[`${CLAIMS_NAMESPACE}/name`] || null,
   };
 };
 

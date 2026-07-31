@@ -47,17 +47,6 @@ router.get('/me', requireAuth, async (request, response, next) => {
   }
 });
 
-
-router.get("/", async (request, response, next) => {
-  try {
-    const users = await Users.findAll();
-    const publicInfo = users.map(user => (toPublicUser(user)));
-    response.json(publicInfo);
-  } catch (error) {
-    next(error)
-  }
-})
-
 // Get a specific user
 router.get("/:id", async (request, response, next) => {
   try {

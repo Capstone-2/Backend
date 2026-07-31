@@ -137,7 +137,7 @@ io.use(async (socket, next) => {
     socket.data.user = {
       id: user.id,
       username: user.username,
-      displayName: user.displayName || user.username ||  user.name,
+      displayName: user.displayName || user.username,
     };
 
     next();
