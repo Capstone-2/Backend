@@ -9,7 +9,7 @@ const { requireAuth } = require('../middleware/auth');
 function toPublicUser(user) {
   return {
     id: user.id,
-    name: user.name,
+    username: user.username,
     displayName: user.displayName,
     school: user.school,
     totalStudyTime: user.totalStudyTime,
@@ -91,7 +91,7 @@ router.patch("/me", requireAuth,  async (request, response, next) => {
 
     await request.user.update(allowedUpdates)
 
-    const publicInfo = toPublicUser(request.user)
+    const publicInfo = toPrivateUser(request.user)
     response.json(publicInfo);
   } catch (error) {
     next(error);

@@ -174,15 +174,15 @@ router.post('/login', authLimiter, async (request, response, next) => {
 router.post('/auth0', jwtCheck, async (request, response, next) => {
   try {
     //const auth0Id = request.auth.payload.sub;
-    const { auth0Id, email, name } = identityFromToken(request);
+    const { auth0Id, email } = identityFromToken(request);
     const existing = await Users.findOne({where: {auth0Id}});
 
     if (existing) return response.json(existing); // 200 = already existed
 
-    const username = await uniqueUsername(request.body.username || name || email?.split('@')[0]);
+    const username = await uniqueUsername(request.body.username || email?.split('@')[0]);
 
     // passwordHash is intentionally absent — Auth0 owns this user's credential.
-    const user = await Users.create({ auth0Id, username, email, name });
+    const user = await Users.create({ auth0Id, username, email });
     response.status(201).json(user); // 201 = Created
   } catch (error) {
     // Sequelize throws these when a validation rule (username length, email

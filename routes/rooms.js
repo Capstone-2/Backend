@@ -14,7 +14,7 @@ roomsRouter.get("/", async (request, response, next) => {
       include: {
         model: Users,
         as: "admin",
-        attributes: ["id", "name", "displayName"],
+        attributes: ["id", "username", "displayName"],
       },
     });
     if (!rooms) {
@@ -35,7 +35,7 @@ roomsRouter.get("/:id", async (request, response, next) => {
 
     const room = await Rooms.findByPk(Number(request.params.id), {
       attributes: {exclude: ["password"]},
-      include: {model: Users, as: "admin", attributes: ["id", "name", "displayName"],},
+      include: {model: Users, as: "admin", attributes: ["id", "username", "displayName"],},
     });
 
     if (!room) {
@@ -66,7 +66,7 @@ roomsRouter.get("/:id/messages", requireAuth, async (request, response, next) =>
 
     const messages = await Messages.findAll({
       where: {roomId},
-      include: {model: Users, attributes: ["id","name","displayName"]},
+      include: {model: Users, attributes: ["id","username","displayName"]},
       order: [["createdAt", "ASC"], ["id", "ASC"]],
       limit: 50,
     });
