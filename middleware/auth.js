@@ -98,6 +98,22 @@ const jwtCheck = auth({
   tokenSigningAlg: 'RS256',
 });
 
+// Helper function that gets the user from a local token. (Door 1)
+async function getUserFromLocalToken(token) {
+  const payload = jwt.verify(token, JWT_SECRET);
+  return Users.findByPk(payload.sub);
+}
+
+// Helper function that gets the user the auth payload a local token. (Door 2)
+async function getUserFromAuth0Payload(payload) {
+  const auth0Id = payload?.sub;
+  if (!auth0Id) {
+    return null;
+  }
+
+  return Users.findOne({where: {auth0Id}});
+}
+
 // ---------- the unified guard ----------
 
 // Put requireAuth on any route to demand a logged-in user:
@@ -111,30 +127,8 @@ const requireAuth = async (request, response, next) => {
   const cookieToken = request.cookies?.[COOKIE_NAME];
   const bearer = request.headers.authorization?.startsWith('Bearer ');
 
-  // --- door 1: our own cookie JWT ---
-  if (cookieToken) {
-    try {
-      // verify() re-computes the signature with our secret and checks expiry.
-      // It THROWS on a forged or expired token — that's the whole point.
-      const payload = jwt.verify(cookieToken, JWT_SECRET);
-      const user = await Users.findByPk(payload.sub);
 
-      // The token was valid but the user is gone (deleted account). Treat the
-      // stale cookie as no credential at all.
-      if (!user) {
-        clearTokenCookie(res);
-        return response.status(401).json({ error: 'Session no longer valid' });
-      }
-
-      request.user = user;
-      return next();
-    } catch {
-      clearTokenCookie(response);
-      return response.status(401).json({ error: 'Invalid or expired token' });
-    }
-  }
-
-  // --- door 2: an Auth0 Bearer token ---
+  // --- door 1: an Auth0 Bearer token ---
   if (bearer) {
     // jwtCheck is ordinary Express middleware, so we can call it by hand and
     // pass it our own callback as `next`. It calls back with an error if the
@@ -143,10 +137,7 @@ const requireAuth = async (request, response, next) => {
       if (error) return next(error); // app.js turns this into a clean 401
 
       try {
-        const user = await Users.findOne({
-          where: { auth0Id: req.auth.payload.sub },
-        });
-
+        const user = await getUserFromAuth0Payload(request.auth.payload);
         // Verified by Auth0, but we've never stored them. The frontend fixes
         // this by calling POST /auth/auth0 once after login.
         if (!user) {
@@ -163,6 +154,28 @@ const requireAuth = async (request, response, next) => {
     });
   }
 
+  // --- door 2: our own cookie JWT ---
+  if (cookieToken) {
+    try {
+      // verify() re-computes the signature with our secret and checks expiry.
+      // It THROWS on a forged or expired token — that's the whole point.
+      const user = await getUserFromLocalToken(cookieToken)
+
+      // The token was valid but the user is gone (deleted account). Treat the
+      // stale cookie as no credential at all.
+      if (!user) {
+        clearTokenCookie(response);
+        return response.status(401).json({ error: 'Session no longer valid' });
+      }
+
+      request.user = user;
+      return next();
+    } catch {
+      clearTokenCookie(response);
+      return response.status(401).json({ error: 'Invalid or expired token' });
+    }
+  }
+
   // --- no credential at all ---
   return response.status(401).json({ error: 'Authentication required' });
 };
@@ -176,7 +189,6 @@ const identityFromToken = (request) => {
   return {
     auth0Id: claims.sub,
     email: claims[`${CLAIMS_NAMESPACE}/email`] || null,
-    name: claims[`${CLAIMS_NAMESPACE}/name`] || null,
   };
 };
 
@@ -187,5 +199,8 @@ module.exports = {
   signToken,
   sendTokenCookie,
   clearTokenCookie,
+  getUserFromLocalToken,
+  getUserFromAuth0Payload,
+  COOKIE_NAME,
   CLAIMS_NAMESPACE,
 };

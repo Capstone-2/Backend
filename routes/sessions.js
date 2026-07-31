@@ -2,11 +2,10 @@ const express = require("express");
 const sessionsRouter = express.Router();
 
 const { Users, Rooms, Sessions } = require("../models");
-const { jwtCheck } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
 const { endSession } = require("../middleware/endSession")
-const loadCurrentUser = require("../middleware/loadCurrentUser");
 
-sessionsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, next) => {
+sessionsRouter.post("/", requireAuth, async (request, response, next) => {
     try {
         const roomId = Number(request.body.roomId);
         if (!Number.isInteger(roomId) || roomId < 1) {
@@ -50,7 +49,7 @@ sessionsRouter.post("/", jwtCheck, loadCurrentUser, async (request, response, ne
     }
 })
 
-sessionsRouter.patch("/:id/end", jwtCheck, loadCurrentUser, async (request, response, next) => {
+sessionsRouter.patch("/:id/end", requireAuth, async (request, response, next) => {
     try {
       const sessionId = Number(request.params.id);
       if (!Number.isInteger(sessionId) || sessionId < 1) {

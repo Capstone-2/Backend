@@ -8,12 +8,6 @@ const Users = db.define('User', {
         allowNull: true,
         unique: true,
     },
-    
-    // The user's full name. Comes from Auth0 for OAuth users; optional for everyone.
-    name: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
 
     // A name the user picks in OUR app (sent from the frontend).
     username: {
