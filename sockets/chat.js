@@ -62,6 +62,39 @@ async function endSocketStudySession(socket) {
   }
 }
 
+async function emitRoomUsers(io, roomName) {
+  const roomSockets = await io.in(roomName).fetchSockets();
+  const uniqueUsers = new Map();
+
+  for (const roomSocket of roomSockets) {
+    const user = roomSocket.data.user;
+    if (!user) {
+      continue;
+    }
+
+    if (!uniqueUsers.has(user.id)) {
+      uniqueUsers.set(user.id, {
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName || user.username,
+        image: user.image || null,
+        joinedAt: roomSocket.data.joinedAt,
+      });
+    }
+  }
+
+  io.to(roomName).emit("room-users", Array.from(uniqueUsers.values()));
+}
+
+function emitSystemMessage(io, roomName, text, socketId) {
+  io.to(roomName).emit("system-message", {
+    id:`system-${socketId}-${Date.now()}`,
+    type: "system",
+    text,
+    sentAt:new Date().toISOString(),
+  });
+}
+
 function registerChatHandlers(io, socket) {
   socket.on("join-room", async ({ roomId }) => {
     try {
@@ -87,11 +120,15 @@ function registerChatHandlers(io, socket) {
       socket.join(roomName);
       socket.data.roomId = parsedRoomId;
       socket.data.roomName = roomName;
+      socket.data.joinedAt = new Date().toISOString()
 
       const user = socket.data.user;
+      emitSystemMessage(io,roomName, `${user.displayName} joined the room.`, socket.id);
+      await emitRoomUsers(io, roomName)
       socket.to(roomName).emit("user-joined", {
         userId: user.id,
         displayName: user.displayName,
+        image: user.image || null
       });
     } catch (error) {
       console.error("Join room failed:", error.message);
@@ -147,11 +184,25 @@ function registerChatHandlers(io, socket) {
 
   socket.on("leave-room", async () => {
     const roomName = socket.data.roomName;
-    if (!roomName) {
+    const roomId = socket.data.roomId;
+    const user = socket.data.user;
+
+    if (!roomName || !user) {
       return;
     }
 
-    const user = socket.data.user;
+    socket.data.roomId = null;
+    socket.data.roomName = null;
+    socket.data.joinedAt = null;
+
+    socket.leave(roomName);
+    emitSystemMessage(io, roomName, `${user.displayName} left the room.`, socket.id);
+    io.to(roomName).emit("user-left", {
+      userId: user.id,
+      displayName: user.displayName,
+    });
+
+    await emitRoomUsers(io, roomName)
 
     try {
       const endedSession = await endSocketStudySession(socket)
@@ -162,15 +213,6 @@ function registerChatHandlers(io, socket) {
       console.error("Failed to end session on room leave:", error.message)
       socket.emit("chat-error", {error: "You left the room, but your study session could not be ended."})
     }
-
-    socket.leave(roomName);
-    socket.to(roomName).emit("user-left", {
-      userId: user.id,
-      displayName: user.displayName,
-    });
-
-    socket.data.roomId = null;
-    socket.data.roomName = null;
   });
 
   socket.on("disconnect", async (reason) => {
@@ -186,7 +228,9 @@ function registerChatHandlers(io, socket) {
       console.error("Failed to end session on disconnect:", error.message);
     }
 
+    await emitRoomUsers(io, roomName)
     if (roomName && user) {
+      emitSystemMessage(io,roomName, `${user.displayName} left the room.`, socket.id);
       io.to(roomName).emit("user-left", {
         userId: user.id,
         displayName: user.displayName,
