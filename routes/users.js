@@ -20,8 +20,8 @@ function toPublicUser(user) {
 function toPrivateUser(user) {
   return {
     ...toPublicUser(user),
-    email: user.email,
     activeStudyTime: user.activeStudyTime,
+    email: user.email,
   };
 }
 
@@ -91,12 +91,8 @@ router.patch("/me", requireAuth,  async (request, response, next) => {
 
     await request.user.update(allowedUpdates)
 
-    const updatedUser = {
-      userId: request.user.id,
-      name: request.user.name,
-      displayName: request.user.displayName,
-    }
-    response.json(updatedUser);
+    const publicInfo = toPublicUser(request.user)
+    response.json(publicInfo);
   } catch (error) {
     next(error);
   }
