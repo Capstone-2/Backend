@@ -138,6 +138,7 @@ io.use(async (socket, next) => {
       id: user.id,
       username: user.username,
       displayName: user.displayName || user.username,
+      icon: user.icon || null,
     };
 
     next();
