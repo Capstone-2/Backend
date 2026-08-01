@@ -13,6 +13,7 @@ const { jwtCheck, requireAuth, getUserFromLocalToken, getUserFromAuth0Payload, C
 const http = require("http");
 const {Server} = require("socket.io");
 const {registerChatHandlers} = require("./sockets/chat");
+const {registerWebRTCHandlers} = require("./sockets/webrtc");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -151,6 +152,7 @@ io.use(async (socket, next) => {
 io.on("connection", (socket) => {
   console.log("socket connected:", socket.id, socket.data.user.id, socket.data.user.displayName);
   registerChatHandlers(io, socket);
+  registerWebRTCHandlers(io, socket); // handles video signaling
 } );
 
 // Deployed apps sit behind a proxy (Render, ...). This tells Express
