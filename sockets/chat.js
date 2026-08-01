@@ -1,5 +1,5 @@
 const { Rooms, Users, Sessions, Messages } = require("../models");
-const { endSession } = require("../middleware/endSession")
+const { endSession } = require("../middleware/endSession");
 
 const MESSAGE_LIMIT_PER_ROOM = 100;  // Message history limit
 
@@ -34,10 +34,7 @@ async function deleteOldMessages(roomId) {
   });
 }
 
-async function endSocketStudySession(socket) {
-  const userId = socket.data.user?.id;
-  const roomId = socket.data.roomId;
-
+async function endSocketStudySession(userId, roomId) {
   if (!userId || !roomId) {
     return null;
   }
@@ -77,7 +74,7 @@ async function emitRoomUsers(io, roomName) {
         userId: user.id,
         username: user.username,
         displayName: user.displayName || user.username,
-        image: user.image || null,
+        icon: user.icon || null,
         joinedAt: roomSocket.data.joinedAt,
       });
     }
@@ -128,7 +125,7 @@ function registerChatHandlers(io, socket) {
       socket.to(roomName).emit("user-joined", {
         userId: user.id,
         displayName: user.displayName,
-        image: user.image || null
+        icon: user.icon || null
       });
     } catch (error) {
       console.error("Join room failed:", error.message);
@@ -196,16 +193,18 @@ function registerChatHandlers(io, socket) {
     socket.data.joinedAt = null;
 
     socket.leave(roomName);
-    emitSystemMessage(io, roomName, `${user.displayName} left the room.`, socket.id);
-    io.to(roomName).emit("user-left", {
-      userId: user.id,
-      displayName: user.displayName,
-    });
-
-    await emitRoomUsers(io, roomName)
+    
+    if (roomName && user) {
+      emitSystemMessage(io, roomName, `${user.displayName} left the room.`, socket.id);
+      io.to(roomName).emit("user-left", {
+        userId: user.id,
+        displayName: user.displayName,
+      });
+      await emitRoomUsers(io, roomName)
+    }
 
     try {
-      const endedSession = await endSocketStudySession(socket)
+      const endedSession = await endSocketStudySession(userId, roomId)
       if (endedSession) {
         console.log("Study session ended on room leave:", endedSession.id)
       }
