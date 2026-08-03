@@ -9,6 +9,7 @@ const userSeeds = [
     school: "NYU",
     displayName: "Alex",
     icon: "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHpuNHBrdTFuaWkydWd5OThqcHpnNXBkemdtZmFyd3I5azh2MWFwOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/YyBJAtdE0J1ICApl71/giphy.gif",
+    totalStudyTime: 7200,
   },
   {
     auth0Id: "auth0|user2",
@@ -17,6 +18,7 @@ const userSeeds = [
     school: "Columbia",
     displayName: "Jordan",
     icon: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExb3ZnZ3BjZTFtand1Z2lhc2o5cHcycmdsODVjbXUxZWEyMTl3NXg4ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7KgtqaBqt7fEOw9JyI/giphy.gif",
+    totalStudyTime: 1800,
   },
   {
     auth0Id: "auth0|user3",
@@ -25,6 +27,7 @@ const userSeeds = [
     school: "CUNY",
     displayName: "Sam",
     icon: "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2ljMGppZzU4cXpycnA0dWdiZ2s4YWR0cWoxZm1idjI3ejludXJtaCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LHZyixOnHwDDy/giphy.gif",
+    totalStudyTime: 18000,
   },
 ];
 

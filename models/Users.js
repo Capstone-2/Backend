@@ -44,7 +44,7 @@ const Users = db.define("User", {
 
   icon: {
     type: DataTypes.TEXT,
-    defaultValue: "/icon1.jpg",
+    defaultValue: "/icon2.jpg",
     allowNull: true,
   },
 
