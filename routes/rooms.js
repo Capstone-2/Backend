@@ -26,6 +26,45 @@ roomsRouter.get("/", async (request, response, next) => {
   }
 });
 
+roomsRouter.get("/presence", async (request, response, next) => {
+    try {
+      const io = request.app.get("io");
+
+      if (!io) {
+        return response.status(503).json({
+          error:
+            "Real-time room presence is currently unavailable.",
+        });
+      }
+
+      const rooms = await Rooms.findAll({attributes: ["id"]});
+      const presence = await Promise.all(
+          rooms.map(async (room) => {
+            const roomSockets = await io.in(`room-${room.id}`).fetchSockets();
+            const uniqueUsers = new Map();
+
+            for (const roomSocket of roomSockets) {
+              const user = roomSocket.data.user;
+
+              if (user && !uniqueUsers.has(user.id)) {
+                uniqueUsers.set(user.id, {userId: user.id});
+              }
+            }
+
+            return {
+              roomId: room.id,
+              users: Array.from(uniqueUsers.values()),
+            };
+          })
+        );
+
+      response.json(presence);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 roomsRouter.get("/:id", async (request, response, next) => {
   try {
     const roomId = Number(request.params.id);

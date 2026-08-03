@@ -24,6 +24,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+app.set("io", io);
 
 function runExpressMiddleware(middleware, request) {
   return new Promise((resolve, reject) => {
@@ -160,7 +161,7 @@ app.set("trust proxy", 1);
 // Stop any one IP from spamming the server.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // max requests per IP in that window
+  max: 150, // max requests per IP in that window
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "🛑 Too many requests, please try again later." },

@@ -4,6 +4,7 @@ const sessionsRouter = express.Router();
 const { Users, Rooms, Sessions } = require("../models");
 const { requireAuth } = require("../middleware/auth");
 const { endSession } = require("../middleware/endSession")
+const { emitRoomUsers } = require("../sockets/chat");
 
 sessionsRouter.post("/", requireAuth, async (request, response, next) => {
     try {
@@ -43,6 +44,11 @@ sessionsRouter.post("/", requireAuth, async (request, response, next) => {
             durationSeconds: null,
         });
 
+        const io = request.app.get("io");
+        if (io) {
+            await emitRoomUsers(io, `room-${roomId}`);
+        }
+
         response.status(201).json(newSession);
     } catch (error) {
         next(error);
@@ -51,19 +57,24 @@ sessionsRouter.post("/", requireAuth, async (request, response, next) => {
 
 sessionsRouter.patch("/:id/end", requireAuth, async (request, response, next) => {
     try {
-      const sessionId = Number(request.params.id);
-      if (!Number.isInteger(sessionId) || sessionId < 1) {
-        return response.status(400).json({
-          error: "Invalid session ID.",
-        });
-      }
+        const sessionId = Number(request.params.id);
+        if (!Number.isInteger(sessionId) || sessionId < 1) {
+            return response.status(400).json({
+                error: "Invalid session ID.",
+            });
+        }
 
-      const endedSession = await endSession(sessionId, request.user.id);
-      response.status(200).json(endedSession);
+        const endedSession = await endSession(sessionId, request.user.id);
+        const io = request.app.get("io");
+        if (io) {
+            await emitRoomUsers(io, `room-${endedSession.roomId}`);
+        }
+
+        response.status(200).json(endedSession);
     } catch (error) {
-      next(error);
+        next(error);
     }
-  }
+}
 );
 
 module.exports = sessionsRouter;
