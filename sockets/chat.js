@@ -59,9 +59,34 @@ async function endSocketStudySession(userId, roomId) {
   }
 }
 
+async function getRoomUserIds(io, roomName) {
+  const roomSockets = await io.in(roomName).fetchSockets();
+  const userIds = new Set();
+
+  for (const roomSocket of roomSockets) {
+    const userId = roomSocket.data.user?.id;
+    if (userId) {
+      userIds.add(userId);
+    }
+  }
+
+  return userIds;
+}
+
 async function emitRoomUsers(io, roomName) {
   const roomSockets = await io.in(roomName).fetchSockets();
+  const roomId = roomSockets[0]?.data.roomId;
   const uniqueUsers = new Map();
+  let activeSessions = [];
+
+  if (roomId) {
+    activeSessions = await Sessions.findAll({
+      where: {roomId, endedAt: null},
+      attributes: ["id", "userId", "startedAt"],
+    });
+  }
+
+  const activeSessionByUser = new Map(activeSessions.map((session) => [session.userId, session]));
 
   for (const roomSocket of roomSockets) {
     const user = roomSocket.data.user;
@@ -70,12 +95,17 @@ async function emitRoomUsers(io, roomName) {
     }
 
     if (!uniqueUsers.has(user.id)) {
+      const activeSession = activeSessionByUser.get(user.id);
       uniqueUsers.set(user.id, {
         userId: user.id,
         username: user.username,
         displayName: user.displayName || user.username,
         icon: user.icon || null,
         joinedAt: roomSocket.data.joinedAt,
+        studySession: activeSession ? {
+          id: activeSession.id,startedAt:
+          activeSession.startedAt
+        } : null
       });
     }
   }
@@ -108,18 +138,38 @@ function registerChatHandlers(io, socket) {
         });
       }
 
+      const user = socket.data.user;
+      const roomName = `room-${parsedRoomId}`;
+      const currentUserIds = await getRoomUserIds(io, roomName);
+      const userAlreadyInRoom = currentUserIds.has(user.id);
+      const roomIsFull = currentUserIds.size >= foundRoom.capacity;
+
+     // Don't allow a user to join from the same socket. 
+      if (socket.data.roomName === roomName) {
+        await emitRoomUsers(io, roomName);
+        return;
+      }
+
+      // Logic for not allowing a user to join a room thats at max capacity.
+      if (roomIsFull && !userAlreadyInRoom) {
+        return socket.emit("room-full",{
+          error: "This room has reached its maximum capacity.",
+          roomId: parsedRoomId,
+          capacity: foundRoom.capacity,
+          currentUsers: currentUserIds.size,
+        })
+      };
+
       // Keep one active study room per socket.
       if (socket.data.roomName) {
         socket.leave(socket.data.roomName);
       }
 
-      const roomName = `room-${parsedRoomId}`;
       socket.join(roomName);
       socket.data.roomId = parsedRoomId;
       socket.data.roomName = roomName;
       socket.data.joinedAt = new Date().toISOString()
 
-      const user = socket.data.user;
       emitSystemMessage(io,roomName, `${user.displayName} joined the room.`, socket.id);
       await emitRoomUsers(io, roomName)
       socket.to(roomName).emit("user-joined", {
@@ -241,4 +291,4 @@ function registerChatHandlers(io, socket) {
   });
 }
 
-module.exports = { registerChatHandlers };
+module.exports = { registerChatHandlers, emitRoomUsers };
