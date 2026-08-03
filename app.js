@@ -24,6 +24,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+app.set("io", io);
 
 function runExpressMiddleware(middleware, request) {
   return new Promise((resolve, reject) => {
